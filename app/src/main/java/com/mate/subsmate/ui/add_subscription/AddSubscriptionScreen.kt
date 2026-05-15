@@ -12,11 +12,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +31,8 @@ import com.mate.subsmate.domain.model.ServiceTemplate
 import com.mate.subsmate.domain.model.TemplateLibrary
 import com.mate.subsmate.ui.theme.GlassyCard
 import com.mate.subsmate.ui.utils.VendorUtils
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,10 +43,62 @@ fun AddSubscriptionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currencySymbol = if (currency == "THB") "฿" else "$"
+    val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTrialDatePicker by remember { mutableStateOf(false) }
 
     if (uiState.isSaved) {
         LaunchedEffect(Unit) {
             onNavigateBack()
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = uiState.firstBillingDate)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        viewModel.onFirstBillingDateChange(it)
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTrialDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = uiState.trialEndDate ?: System.currentTimeMillis())
+        DatePickerDialog(
+            onDismissRequest = { showTrialDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        viewModel.onTrialEndDateChange(it)
+                    }
+                    showTrialDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTrialDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -138,6 +190,28 @@ fun AddSubscriptionScreen(
 
                     HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
 
+                    // Date Picker Trigger
+                    OutlinedCard(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("First Billing Date", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                Text(dateFormatter.format(Date(uiState.firstBillingDate)), style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+
                     Text("Payment Type", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                         SegmentedButton(
@@ -158,16 +232,68 @@ fun AddSubscriptionScreen(
                 }
             }
 
+            // Trial Section
+            GlassyCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Trial Period", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text("Calculate from trial end date", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
+                        }
+                        Switch(
+                            checked = uiState.isTrial,
+                            onCheckedChange = { viewModel.onTrialToggle(it) }
+                        )
+                    }
+
+                    if (uiState.isTrial) {
+                        OutlinedCard(
+                            onClick = { showTrialDatePicker = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.DateRange, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text("Trial End Date", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                    Text(
+                                        uiState.trialEndDate?.let { dateFormatter.format(Date(it)) } ?: "Select date",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Reminders
             GlassyCard(modifier = Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Remind me", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(1, 2, 3, 7).forEach { days ->
+                    Text("Remind before", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(listOf(1, 2, 3, 7)) { days ->
+                            val label = when (days) {
+                                1 -> "1 day"
+                                7 -> "1 week"
+                                else -> "$days days"
+                            }
                             FilterChip(
                                 selected = uiState.reminderDaysBefore == days,
                                 onClick = { viewModel.onReminderChange(days) },
-                                label = { Text("$days d before") },
+                                label = { Text(label, maxLines = 1) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                                     selectedLabelColor = MaterialTheme.colorScheme.primary
