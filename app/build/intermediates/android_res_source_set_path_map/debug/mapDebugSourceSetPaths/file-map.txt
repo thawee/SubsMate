@@ -1,0 +1,7 @@
+com.mate.subsmate.app-updated_navigation_xml-0 /Users/thawee.p/Workspaces/github/SubsMate/app/build/generated/updated_navigation_xml/debug
+com.mate.subsmate.app-packageDebugResources-1 /Users/thawee.p/Workspaces/github/SubsMate/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.mate.subsmate.app-packageDebugResources-2 /Users/thawee.p/Workspaces/github/SubsMate/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.mate.subsmate.app-debug-3 /Users/thawee.p/Workspaces/github/SubsMate/app/build/intermediates/merged_res/debug/mergeDebugResources
+com.mate.subsmate.app-debug-4 /Users/thawee.p/Workspaces/github/SubsMate/app/src/debug/res
+com.mate.subsmate.app-main-5 /Users/thawee.p/Workspaces/github/SubsMate/app/src/main/res
+gradleHome-0 /Users/thawee.p/.gradle

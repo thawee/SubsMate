@@ -1,0 +1,26 @@
+R_DEF: Internal format may change without notice
+local
+color black
+color purple_200
+color purple_500
+color purple_700
+color teal_200
+color teal_700
+color white
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+drawable ic_vendor_adobe_creative_cloud
+drawable ic_vendor_chatgpt_plus
+drawable ic_vendor_claude_pro
+drawable ic_vendor_disney_plus
+drawable ic_vendor_google_one
+drawable ic_vendor_icloud
+drawable ic_vendor_microsoft_365
+drawable ic_vendor_midjourney
+drawable ic_vendor_netflix
+drawable ic_vendor_spotify
+drawable ic_vendor_viu_premium
+drawable ic_vendor_youtube_premium
+mipmap ic_launcher
+mipmap ic_launcher_round
+style Theme.Material3.DayNight
