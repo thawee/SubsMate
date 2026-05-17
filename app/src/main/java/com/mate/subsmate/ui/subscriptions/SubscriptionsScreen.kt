@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mate.subsmate.data.local.entities.SubscriptionEntity
 import com.mate.subsmate.ui.utils.VendorUtils
+import com.mate.subsmate.ui.utils.IconUtils
 import com.mate.subsmate.ui.theme.GlassyCard
 import java.text.SimpleDateFormat
 import java.util.*
@@ -128,11 +129,11 @@ fun SubscriptionManageItem(
                         contentScale = ContentScale.Fit
                     )
                 } else {
-                    Text(
-                        text = subscription.name.take(1).uppercase(),
-                        color = subscription.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
+                    Icon(
+                        imageVector = IconUtils.getIconByName(subscription.iconResId ?: "category"),
+                        contentDescription = subscription.name,
+                        tint = subscription.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }

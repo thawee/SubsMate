@@ -30,6 +30,7 @@ import com.mate.subsmate.domain.model.PaymentType
 import com.mate.subsmate.ui.insights.CategorySpend
 import com.mate.subsmate.ui.theme.*
 import com.mate.subsmate.ui.utils.VendorUtils
+import com.mate.subsmate.ui.utils.IconUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -339,11 +340,11 @@ fun SubscriptionItem(
                         contentScale = ContentScale.Fit
                     )
                 } else {
-                    Text(
-                        text = sub.name.take(1).uppercase(),
-                        color = sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 20.sp
+                    Icon(
+                        imageVector = IconUtils.getIconByName(sub.iconResId ?: "category"),
+                        contentDescription = sub.name,
+                        tint = sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }

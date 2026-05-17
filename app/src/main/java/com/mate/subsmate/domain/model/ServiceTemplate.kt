@@ -21,7 +21,7 @@ object TemplateLibrary {
         // AI & Tools
         ServiceTemplate("ChatGPT Plus", 2, 20.00, null, "#10A37F", "psychology"),
         ServiceTemplate("Claude Pro", 2, 20.00, null, "#D97757", "psychology"),
-        ServiceTemplate("Midjourney", 2, 10.00, 96.00, "#FFFFFF", "image"),
+        ServiceTemplate("Midjourney", 2, 10.00, 96.00, "#424242", "image"),
         
         // Software
         ServiceTemplate("Google One", 5, 1.99, 19.99, "#4285F4", "cloud"),
@@ -29,7 +29,7 @@ object TemplateLibrary {
         ServiceTemplate("Microsoft 365", 5, 6.99, 69.99, "#00A4EF", "description"),
 
         // Utilities
-        ServiceTemplate("Internet", 3, 50.00, null, "#000000", "language"),
+        ServiceTemplate("Internet", 3, 50.00, null, "#0091EA", "language"),
         ServiceTemplate("Electricity", 3, null, null, "#FFD700", "bolt"),
         ServiceTemplate("Mobile Plan", 4, 30.00, null, "#007AFF", "smartphone")
     )

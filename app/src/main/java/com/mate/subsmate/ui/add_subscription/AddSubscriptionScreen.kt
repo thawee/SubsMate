@@ -31,6 +31,7 @@ import com.mate.subsmate.domain.model.ServiceTemplate
 import com.mate.subsmate.domain.model.TemplateLibrary
 import com.mate.subsmate.ui.theme.GlassyCard
 import com.mate.subsmate.ui.utils.VendorUtils
+import com.mate.subsmate.ui.utils.IconUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -356,10 +357,11 @@ fun TemplateItem(template: ServiceTemplate, onClick: () -> Unit) {
                         contentScale = ContentScale.Fit
                     )
                 } else {
-                    Text(
-                        text = template.name.take(1).uppercase(),
-                        fontWeight = FontWeight.Bold,
-                        color = Color(android.graphics.Color.parseColor(template.colorHex))
+                    Icon(
+                        imageVector = IconUtils.getIconByName(template.iconName),
+                        contentDescription = template.name,
+                        tint = Color(android.graphics.Color.parseColor(template.colorHex)),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
