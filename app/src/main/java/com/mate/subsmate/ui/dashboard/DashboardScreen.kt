@@ -130,9 +130,12 @@ fun DashboardScreen(
 
 @Composable
 fun BudgetUsageCard(spent: Double, budget: Double, yearly: Double, currencySymbol: String) {
+    val isDark = isSystemInDarkTheme()
     val percentage = if (budget > 0) (spent / budget).toFloat().coerceIn(0f, 1.2f) else 0f
     val isOverBudget = budget > 0 && spent > budget
     val progressColor = if (isOverBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
+    val innerCardBg = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.02f)
+    val innerCardBorder = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
     GlassyCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -211,9 +214,9 @@ fun BudgetUsageCard(spent: Double, budget: Double, yearly: Double, currencySymbo
                 // Monthly Card
                 Surface(
                     modifier = Modifier.weight(1f),
-                    color = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f),
+                    color = innerCardBg,
                     shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                    border = BorderStroke(1.dp, innerCardBorder)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text("Monthly Total", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -223,9 +226,9 @@ fun BudgetUsageCard(spent: Double, budget: Double, yearly: Double, currencySymbo
                 // Yearly Card
                 Surface(
                     modifier = Modifier.weight(1f),
-                    color = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f),
+                    color = innerCardBg,
                     shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+                    border = BorderStroke(1.dp, innerCardBorder)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text("Yearly Estimate", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -305,15 +308,18 @@ fun SubscriptionItem(
     val daysRemaining = VendorUtils.getDaysRemaining(sub.nextBillingDate)
     val logo = VendorUtils.getLogo(sub.name)
     val isDue = sub.nextBillingDate <= System.currentTimeMillis()
+    val isDark = isSystemInDarkTheme()
 
-    val cardBg = if (isSystemInDarkTheme()) GlassNavy.copy(alpha = 0.3f) else GlassWhite.copy(alpha = 0.6f)
+    val cardBg = if (isDark) GlassNavy.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.85f)
+    val borderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f)
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         color = cardBg,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-        tonalElevation = 0.dp
+        border = BorderStroke(1.dp, borderColor),
+        tonalElevation = 0.dp,
+        shadowElevation = if (isDark) 0.dp else 2.dp
     ) {
         Row(
             modifier = Modifier

@@ -23,16 +23,16 @@ fun GlassyCard(
     content: @Composable () -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
-    val bgColor = if (isDark) GlassNavy.copy(alpha = 0.4f) else GlassWhite.copy(alpha = 0.7f)
-    val borderColor = if (isDark) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.4f)
+    val bgColor = if (isDark) GlassNavy.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.85f)
+    val borderColor = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
     Surface(
-        modifier = modifier,
+        modifier = modifier.clip(RoundedCornerShape(24.dp)),
         shape = RoundedCornerShape(24.dp),
         color = bgColor,
         border = BorderStroke(1.dp, borderColor),
         tonalElevation = 0.dp,
-        shadowElevation = 4.dp
+        shadowElevation = if (isDark) 0.dp else 2.dp
     ) {
         Box(modifier = Modifier.padding(20.dp)) {
             content()

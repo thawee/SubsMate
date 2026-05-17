@@ -2,6 +2,7 @@ package com.mate.subsmate.ui.add_subscription
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -45,6 +46,7 @@ fun AddSubscriptionScreen(
     val uiState by viewModel.uiState.collectAsState()
     val currencySymbol = if (currency == "THB") "฿" else "$"
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val isDark = isSystemInDarkTheme()
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTrialDatePicker by remember { mutableStateOf(false) }
@@ -151,7 +153,7 @@ fun AddSubscriptionScreen(
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                            unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
                         )
                     )
 
@@ -164,7 +166,7 @@ fun AddSubscriptionScreen(
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                            unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
                         )
                     )
                 }
@@ -189,14 +191,14 @@ fun AddSubscriptionScreen(
                         }
                     }
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
 
                     // Date Picker Trigger
                     OutlinedCard(
                         onClick = { showDatePicker = true },
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
-                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                        border = BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f))
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -211,7 +213,7 @@ fun AddSubscriptionScreen(
                         }
                     }
 
-                    HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+                    HorizontalDivider(color = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
 
                     Text("Payment Type", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -243,7 +245,7 @@ fun AddSubscriptionScreen(
                     ) {
                         Column {
                             Text("Trial Period", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                            Text("Calculate from trial end date", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f))
+                            Text("Calculate from trial end date", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                         }
                         Switch(
                             checked = uiState.isTrial,
@@ -256,7 +258,7 @@ fun AddSubscriptionScreen(
                             onClick = { showTrialDatePicker = true },
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.outlinedCardColors(containerColor = Color.Transparent),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                            border = BorderStroke(1.dp, if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f))
                         ) {
                             Row(
                                 modifier = Modifier.padding(16.dp),
@@ -332,11 +334,16 @@ fun AddSubscriptionScreen(
 @Composable
 fun TemplateItem(template: ServiceTemplate, onClick: () -> Unit) {
     val logo = VendorUtils.getLogo(template.name)
+    val isDark = isSystemInDarkTheme()
+    val cardBg = if (isDark) Color.White.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.8f)
+    val borderColor = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
+
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.1f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        color = cardBg,
+        border = BorderStroke(1.dp, borderColor),
+        shadowElevation = if (isDark) 0.dp else 1.dp
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

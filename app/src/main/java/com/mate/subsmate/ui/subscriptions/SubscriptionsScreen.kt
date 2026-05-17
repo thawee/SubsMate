@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mate.subsmate.data.local.entities.SubscriptionEntity
+import com.mate.subsmate.ui.theme.GlassNavy
 import com.mate.subsmate.ui.utils.VendorUtils
 import com.mate.subsmate.ui.utils.IconUtils
 import com.mate.subsmate.ui.theme.GlassyCard
@@ -95,16 +96,19 @@ fun SubscriptionManageItem(
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val logo = VendorUtils.getLogo(subscription.name)
     val isDark = isSystemInDarkTheme()
-    val cardBg = if (isDark) Color(0x331E3A8A) else Color(0x66FFFFFF)
+    val cardBg = if (isDark) GlassNavy.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.85f)
+    val borderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f)
     
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onEdit),
         shape = RoundedCornerShape(20.dp),
         color = cardBg,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
-        tonalElevation = 0.dp
+        border = BorderStroke(1.dp, borderColor),
+        tonalElevation = 0.dp,
+        shadowElevation = if (isDark) 0.dp else 2.dp
     ) {
         Row(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
