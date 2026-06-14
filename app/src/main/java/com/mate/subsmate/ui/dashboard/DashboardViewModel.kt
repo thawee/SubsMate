@@ -29,7 +29,11 @@ data class DashboardUiState(
     val upcomingCharges: List<SubscriptionChargeUiModel> = emptyList(),
     val categoryBreakdown: List<CategorySpend> = emptyList(),
     val isLoading: Boolean = true,
-    val dayCriteria: Int = 14
+    val dayCriteria: Int = 14,
+    val activeCount: Int = 0,
+    val trialCount: Int = 0,
+    val averageCost: Double = 0.0,
+    val mostExpensive: SubscriptionEntity? = null
 )
 
 class DashboardViewModel(
@@ -101,7 +105,11 @@ class DashboardViewModel(
             upcomingCharges = chargeModels,
             categoryBreakdown = CategoryUtils.calculateCategoryBreakdown(subs, total).take(4),
             isLoading = false,
-            dayCriteria = days
+            dayCriteria = days,
+            activeCount = subs.size,
+            trialCount = subs.count { it.isTrial },
+            averageCost = if (subs.isNotEmpty()) total / subs.size else 0.0,
+            mostExpensive = subs.maxByOrNull { it.price }
         )
     }.stateIn(
         scope = viewModelScope,

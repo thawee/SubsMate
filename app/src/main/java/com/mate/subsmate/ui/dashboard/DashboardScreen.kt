@@ -90,6 +90,16 @@ fun DashboardScreen(
                 )
             }
 
+            item {
+                QuickStatsRow(
+                    activeCount = uiState.activeCount,
+                    trialCount = uiState.trialCount,
+                    averageCost = uiState.averageCost,
+                    mostExpensive = uiState.mostExpensive,
+                    currencySymbol = currencySymbol
+                )
+            }
+
             if (uiState.categoryBreakdown.isNotEmpty()) {
                 item {
                     CategoryBreakdownSummary(uiState.categoryBreakdown)
@@ -318,6 +328,97 @@ fun CategoryBreakdownSummary(breakdown: List<CategorySpend>) {
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun QuickStatsRow(
+    activeCount: Int,
+    trialCount: Int,
+    averageCost: Double,
+    mostExpensive: com.mate.subsmate.data.local.entities.SubscriptionEntity?,
+    currencySymbol: String
+) {
+    val isDark = isSystemInDarkTheme()
+    val cardBg = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f)
+    val borderColor = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        StatCard(
+            modifier = Modifier.weight(1f),
+            label = "Active",
+            value = "$activeCount",
+            cardBg = cardBg,
+            borderColor = borderColor
+        )
+        StatCard(
+            modifier = Modifier.weight(1f),
+            label = "Trials",
+            value = "$trialCount",
+            cardBg = cardBg,
+            borderColor = borderColor,
+            valueColor = if (trialCount > 0) WarningOrange else MaterialTheme.colorScheme.onSurface
+        )
+        StatCard(
+            modifier = Modifier.weight(1f),
+            label = "Avg/Mo",
+            value = "$currencySymbol${String.format("%,.0f", averageCost)}",
+            cardBg = cardBg,
+            borderColor = borderColor
+        )
+        StatCard(
+            modifier = Modifier.weight(1f),
+            label = "Top",
+            value = mostExpensive?.let { "$currencySymbol${String.format("%,.0f", it.price)}" } ?: "-",
+            cardBg = cardBg,
+            borderColor = borderColor,
+            subtitle = mostExpensive?.name
+        )
+    }
+}
+
+@Composable
+fun StatCard(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String,
+    cardBg: Color,
+    borderColor: Color,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    subtitle: String? = null
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = cardBg,
+        border = BorderStroke(1.dp, borderColor)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = valueColor,
+                maxLines = 1
+            )
+            subtitle?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    maxLines = 1
+                )
             }
         }
     }
