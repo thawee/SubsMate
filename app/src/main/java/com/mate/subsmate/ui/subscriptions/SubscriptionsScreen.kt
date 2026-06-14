@@ -11,8 +11,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mate.subsmate.data.local.entities.SubscriptionEntity
 import com.mate.subsmate.ui.theme.GlassNavy
@@ -45,6 +45,8 @@ fun SubscriptionsScreen(
     val uiState by viewModel.uiState.collectAsState()
     val currencySymbol = CurrencyUtils.getSymbol(currency)
     var subscriptionToDelete by remember { mutableStateOf<SubscriptionEntity?>(null) }
+    var showSortMenu by remember { mutableStateOf(false) }
+    val isDark = isSystemInDarkTheme()
 
     Scaffold(
         topBar = {
@@ -65,25 +67,124 @@ fun SubscriptionsScreen(
         },
         containerColor = Color.Transparent
     ) { padding ->
-        if (uiState.subscriptions.isEmpty() && !uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No subscriptions yet.", color = Color.Gray)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp)
+        ) {
+            // Search Bar
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = { viewModel.onSearchQueryChange(it) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search subscriptions...") },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.1f),
+                    focusedContainerColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.8f),
+                    unfocusedContainerColor = if (isDark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.8f)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Sort Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                items(uiState.subscriptions) { sub ->
-                    SubscriptionManageItem(
-                        subscription = sub,
-                        currencySymbol = currencySymbol,
-                        onEdit = { onNavigateToEdit(sub.id) },
-                        onDelete = { subscriptionToDelete = sub }
+                Text(
+                    text = "${uiState.filteredSubscriptions.size} subscription${if (uiState.filteredSubscriptions.size != 1) "s" else ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+
+                Box {
+                    Surface(
+                        onClick = { showSortMenu = true },
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = uiState.sortOption.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = "Sort",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false }
+                    ) {
+                        SortOption.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = option.label,
+                                        color = if (option == uiState.sortOption) MaterialTheme.colorScheme.primary
+                                               else MaterialTheme.colorScheme.onSurface
+                                    )
+                                },
+                                onClick = {
+                                    viewModel.onSortOptionChange(option)
+                                    showSortMenu = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Subscriptions List
+            if (uiState.filteredSubscriptions.isEmpty() && !uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (uiState.searchQuery.isNotBlank()) "No matching subscriptions" else "No subscriptions yet.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp)
+                ) {
+                    items(uiState.filteredSubscriptions) { sub ->
+                        SubscriptionManageItem(
+                            subscription = sub,
+                            currencySymbol = currencySymbol,
+                            onEdit = { onNavigateToEdit(sub.id) },
+                            onDelete = { subscriptionToDelete = sub }
+                        )
+                    }
+                }
             }
         }
     }
