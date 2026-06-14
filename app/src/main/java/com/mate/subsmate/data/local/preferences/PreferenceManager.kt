@@ -15,11 +15,18 @@ class PreferenceManager(context: Context) {
     }
 
     fun getDouble(key: String, defaultValue: Double): Double {
-        return prefs.getFloat(key, defaultValue.toFloat()).toDouble()
+        return try {
+            Double.fromBits(prefs.getLong(key, defaultValue.toBits()))
+        } catch (e: ClassCastException) {
+            // Migrate from Float (old format) to Long
+            val floatValue = prefs.getFloat(key, defaultValue.toFloat())
+            prefs.edit().remove(key).putLong(key, floatValue.toDouble().toBits()).apply()
+            floatValue.toDouble()
+        }
     }
 
     fun setDouble(key: String, value: Double) {
-        prefs.edit().putFloat(key, value.toFloat()).apply()
+        prefs.edit().putLong(key, value.toBits()).apply()
     }
 
     fun getInt(key: String, defaultValue: Int): Int {

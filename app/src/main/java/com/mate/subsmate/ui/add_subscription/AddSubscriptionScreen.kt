@@ -66,6 +66,14 @@ fun AddSubscriptionScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTrialDatePicker by remember { mutableStateOf(false) }
 
+    // Auto-dismiss error after 3 seconds
+    LaunchedEffect(uiState.errorMessage) {
+        if (uiState.errorMessage != null) {
+            kotlinx.coroutines.delay(3000)
+            viewModel.clearError()
+        }
+    }
+
     if (uiState.isSaved) {
         LaunchedEffect(Unit) {
             onNavigateBack()
@@ -131,6 +139,16 @@ fun AddSubscriptionScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
+        },
+        snackbarHost = {
+            uiState.errorMessage?.let { error ->
+                Snackbar(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                ) {
+                    Text(error)
+                }
+            }
         },
         containerColor = Color.Transparent
     ) { padding ->
@@ -222,6 +240,22 @@ fun AddSubscriptionScreen(
                                 )
                             )
                         }
+                    }
+
+                    if (uiState.billingCycle == BillingCycle.CUSTOM) {
+                        OutlinedTextField(
+                            value = uiState.customCycleDays,
+                            onValueChange = { viewModel.onCustomCycleDaysChange(it) },
+                            label = { Text("Cycle Days") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            isError = uiState.customCycleDays.isNotEmpty() && (uiState.customCycleDays.toIntOrNull() == null || uiState.customCycleDays.toIntOrNull()!! <= 0),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                            )
+                        )
                     }
 
                     HorizontalDivider(color = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))

@@ -9,7 +9,7 @@ data class Category(
 
 object CategoryDefaults {
     val categories = listOf(
-        Category(1, "Entertainment", "play_circle", "#E50914"),
+        Category(1, "Streaming", "play_circle", "#E50914"),
         Category(2, "AI & Tools", "psychology", "#10A37F"),
         Category(3, "Utilities", "bolt", "#F57C00"),
         Category(4, "Communication", "call", "#007AFF"),

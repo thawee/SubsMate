@@ -7,6 +7,7 @@ import com.mate.subsmate.domain.model.BillingCycle
 import com.mate.subsmate.domain.model.PaymentType
 import com.mate.subsmate.domain.model.ServiceTemplate
 import com.mate.subsmate.domain.repository.SubscriptionRepository
+import com.mate.subsmate.ui.utils.TimeUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,7 +37,9 @@ data class AddSubscriptionUiState(
     val currentInstallment: String = "",
     val totalLoanAmount: String = "",
     val interestRate: String = "",
-    val extraPrincipalPaid: String = ""
+    val extraPrincipalPaid: String = "",
+    val customCycleDays: String = "",
+    val errorMessage: String? = null
 )
 
 class AddSubscriptionViewModel(
@@ -73,7 +76,8 @@ class AddSubscriptionViewModel(
                         currentInstallment = sub.currentInstallment.toString(),
                         totalLoanAmount = sub.totalLoanAmount?.toString() ?: "",
                         interestRate = sub.interestRate?.toString() ?: "",
-                        extraPrincipalPaid = if (sub.extraPrincipalPaid == 0.0) "" else sub.extraPrincipalPaid.toString()
+                        extraPrincipalPaid = if (sub.extraPrincipalPaid == 0.0) "" else sub.extraPrincipalPaid.toString(),
+                        customCycleDays = sub.customCycleDays?.toString() ?: ""
                     )
                 }
                 isLoaded = true
@@ -82,11 +86,11 @@ class AddSubscriptionViewModel(
     }
 
     fun onNameChange(newName: String) {
-        _uiState.update { it.copy(name = newName, selectedTemplate = null) }
+        _uiState.update { it.copy(name = newName, selectedTemplate = null, errorMessage = null) }
     }
 
     fun onPriceChange(newPrice: String) {
-        _uiState.update { it.copy(price = newPrice, selectedTemplate = null) }
+        _uiState.update { it.copy(price = newPrice, selectedTemplate = null, errorMessage = null) }
     }
 
     fun onCategoryChange(newCategoryId: Int) {
@@ -120,7 +124,7 @@ class AddSubscriptionViewModel(
         _uiState.update { 
             it.copy(
                 isTrial = isTrial,
-                trialEndDate = if (isTrial) it.trialEndDate ?: (System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000L) else null
+                trialEndDate = if (isTrial) it.trialEndDate ?: (System.currentTimeMillis() + 7 * TimeUtils.MILLIS_PER_DAY) else null
             ) 
         }
     }
@@ -158,7 +162,15 @@ class AddSubscriptionViewModel(
     }
 
     fun onExtraPrincipalPaidChange(value: String) {
-        _uiState.update { it.copy(extraPrincipalPaid = value) }
+        _uiState.update { it.copy(extraPrincipalPaid = value, errorMessage = null) }
+    }
+
+    fun onCustomCycleDaysChange(value: String) {
+        _uiState.update { it.copy(customCycleDays = value, errorMessage = null) }
+    }
+
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     fun onTemplateSelected(template: ServiceTemplate) {
@@ -185,6 +197,7 @@ class AddSubscriptionViewModel(
         val totalLoanAmountVal = if (state.isLoan) state.totalLoanAmount.toDoubleOrNull() else null
         val interestRateVal = if (state.isLoan) state.interestRate.toDoubleOrNull() else null
         val extraPrincipalPaidVal = if (state.isLoan) state.extraPrincipalPaid.toDoubleOrNull() ?: 0.0 else 0.0
+        val customCycleDaysVal = if (state.billingCycle == BillingCycle.CUSTOM) state.customCycleDays.toIntOrNull()?.coerceAtLeast(1) else null
 
         val isLoanValid = !state.isLoan || (
             totalInstallmentsVal != null && totalInstallmentsVal > 0 &&
@@ -193,7 +206,22 @@ class AddSubscriptionViewModel(
             (interestRateVal == null || interestRateVal >= 0.0) &&
             extraPrincipalPaidVal >= 0.0
         )
-        if (state.name.isBlank() || !isPriceValid || !isLoanValid) return
+        if (state.name.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Service name is required") }
+            return
+        }
+        if (!isPriceValid) {
+            _uiState.update { it.copy(errorMessage = "Please enter a valid price") }
+            return
+        }
+        if (!isLoanValid) {
+            _uiState.update { it.copy(errorMessage = "Please check loan details") }
+            return
+        }
+        if (state.billingCycle == BillingCycle.CUSTOM && customCycleDaysVal == null) {
+            _uiState.update { it.copy(errorMessage = "Please enter valid cycle days") }
+            return
+        }
 
         viewModelScope.launch {
             // If editing, we might want to preserve lastNotifiedDate
@@ -202,7 +230,7 @@ class AddSubscriptionViewModel(
             val nextBilling = if (state.isTrial && state.trialEndDate != null) {
                 state.trialEndDate
             } else {
-                calculateNextBillingDate(state.firstBillingDate, state.billingCycle)
+                calculateNextBillingDate(state.firstBillingDate, state.billingCycle, state.customCycleDays)
             }
 
             val finalPrice = if (state.isVariablePrice) {
@@ -246,23 +274,25 @@ class AddSubscriptionViewModel(
                 currentInstallment = currentInstallmentVal,
                 totalLoanAmount = totalLoanAmountVal,
                 interestRate = interestRateVal,
-                extraPrincipalPaid = extraPrincipalPaidVal
+                extraPrincipalPaid = extraPrincipalPaidVal,
+                customCycleDays = customCycleDaysVal
             )
             repository.insertSubscription(entity)
             _uiState.update { it.copy(isSaved = true) }
         }
     }
 
-    private fun calculateNextBillingDate(firstDate: Long, cycle: BillingCycle): Long {
+    private fun calculateNextBillingDate(firstDate: Long, cycle: BillingCycle, customCycleDays: String? = null): Long {
         val now = System.currentTimeMillis()
         if (firstDate > now) return firstDate
 
+        val cycleDays = customCycleDays?.toIntOrNull()?.coerceAtLeast(1) ?: TimeUtils.DEFAULT_CUSTOM_CYCLE_DAYS
         val calendar = Calendar.getInstance().apply { timeInMillis = firstDate }
         while (calendar.timeInMillis < now) {
             when (cycle) {
                 BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, 1)
                 BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, 1)
-                BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, 30) // Default for custom for now
+                BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, cycleDays)
             }
         }
         return calendar.timeInMillis

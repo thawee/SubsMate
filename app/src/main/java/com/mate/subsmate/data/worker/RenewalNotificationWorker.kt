@@ -30,12 +30,27 @@ class RenewalNotificationWorker(
         }.timeInMillis
 
         subscriptions.forEach { sub ->
-            val reminderMillis = sub.reminderDaysBefore * 24 * 60 * 60 * 1000L
+            val reminderMillis = sub.reminderDaysBefore * com.mate.subsmate.ui.utils.TimeUtils.MILLIS_PER_DAY
             val windowEnd = now + reminderMillis
             
             // Auto-advance AUTO_PAY if overdue
             if (sub.paymentType == com.mate.subsmate.domain.model.PaymentType.AUTO_PAY && sub.nextBillingDate < now) {
-                val nextDate = calculateNextDate(sub.nextBillingDate, sub.billingCycle)
+                // Check if payment already exists for this billing period (user may have marked as paid)
+                val existingPaymentCount = db.paymentDao().countPaymentsForPeriod(sub.id, sub.nextBillingDate)
+                if (existingPaymentCount > 0) {
+                    // Payment already recorded, just advance the date without creating duplicate
+                val nextDate = calculateNextDate(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
+                    val isCompleted = sub.totalInstallments != null && (sub.currentInstallment + 1) >= sub.totalInstallments
+                    dao.updateSubscription(sub.copy(
+                        nextBillingDate = nextDate,
+                        currentInstallment = if (sub.totalInstallments != null) sub.currentInstallment + 1 else sub.currentInstallment,
+                        isActive = !isCompleted,
+                        lastNotifiedDate = null
+                    ))
+                    return@forEach
+                }
+
+                val nextDate = calculateNextDate(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
                 
                 // Record payment history
                 db.paymentDao().insertPayment(
@@ -94,15 +109,16 @@ class RenewalNotificationWorker(
         return Result.success()
     }
 
-    private fun calculateNextDate(currentDate: Long, cycle: com.mate.subsmate.domain.model.BillingCycle): Long {
+    private fun calculateNextDate(currentDate: Long, cycle: com.mate.subsmate.domain.model.BillingCycle, customCycleDays: Int? = null): Long {
         val calendar = Calendar.getInstance().apply { timeInMillis = currentDate }
         val now = System.currentTimeMillis()
+        val cycleDays = customCycleDays?.coerceAtLeast(1) ?: com.mate.subsmate.ui.utils.TimeUtils.DEFAULT_CUSTOM_CYCLE_DAYS
         
         while (calendar.timeInMillis <= now) {
             when (cycle) {
                 com.mate.subsmate.domain.model.BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, 1)
                 com.mate.subsmate.domain.model.BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, 1)
-                com.mate.subsmate.domain.model.BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, 30)
+                com.mate.subsmate.domain.model.BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, cycleDays)
             }
         }
         return calendar.timeInMillis

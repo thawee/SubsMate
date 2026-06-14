@@ -2,6 +2,7 @@ package com.mate.subsmate.data.local.database
 
 import androidx.room.TypeConverter
 import com.mate.subsmate.domain.model.BillingCycle
+import com.mate.subsmate.domain.model.PaymentType
 
 class Converters {
     @TypeConverter
@@ -12,5 +13,15 @@ class Converters {
     @TypeConverter
     fun toBillingCycle(value: String): BillingCycle {
         return BillingCycle.valueOf(value)
+    }
+
+    @TypeConverter
+    fun fromPaymentType(value: PaymentType): String {
+        return value.name
+    }
+
+    @TypeConverter
+    fun toPaymentType(value: String): PaymentType {
+        return PaymentType.valueOf(value)
     }
 }

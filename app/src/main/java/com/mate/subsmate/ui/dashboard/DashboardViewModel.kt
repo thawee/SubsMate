@@ -8,6 +8,8 @@ import com.mate.subsmate.domain.repository.SubscriptionRepository
 import com.mate.subsmate.domain.model.BillingCycle
 import com.mate.subsmate.domain.model.CategoryDefaults
 import com.mate.subsmate.ui.insights.CategorySpend
+import com.mate.subsmate.ui.utils.CategoryUtils
+import com.mate.subsmate.ui.utils.TimeUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
@@ -65,11 +67,11 @@ class DashboardViewModel(
             set(Calendar.MILLISECOND, 0)
         }
         val todayStart = calendar.timeInMillis
-        val limit = now + (days * 24 * 60 * 60 * 1000L)
+        val limit = now + (days * TimeUtils.MILLIS_PER_DAY)
         val total = monthlyTotal ?: 0.0
 
         // Visibility window for recently paid items
-        val visibilityThreshold = todayStart - (visibilityDays * 24 * 60 * 60 * 1000L)
+        val visibilityThreshold = todayStart - (visibilityDays * TimeUtils.MILLIS_PER_DAY)
 
         val chargeModels = subs.map { sub ->
             val recentPayment = allPayments.find { 
@@ -97,7 +99,7 @@ class DashboardViewModel(
             monthlyTotal = total,
             yearlyTotal = total * 12,
             upcomingCharges = chargeModels,
-            categoryBreakdown = calculateCategoryBreakdown(subs, total),
+            categoryBreakdown = CategoryUtils.calculateCategoryBreakdown(subs, total).take(4),
             isLoading = false,
             dayCriteria = days
         )
@@ -127,7 +129,7 @@ class DashboardViewModel(
     fun undoPayment(sub: SubscriptionEntity) {
         viewModelScope.launch {
             val current = repository.getSubscriptionById(sub.id).firstOrNull() ?: sub
-            val previousDate = revertNextDate(current.nextBillingDate, current.billingCycle)
+            val previousDate = revertNextDate(current.nextBillingDate, current.billingCycle, current.customCycleDays)
             repository.undoPayment(current.id)
             val isLoanCompleted = current.totalInstallments != null && (current.currentInstallment - 1) >= current.totalInstallments
             val updatedSub = current.copy(
@@ -139,12 +141,12 @@ class DashboardViewModel(
         }
     }
 
-    private fun revertNextDate(currentDate: Long, cycle: BillingCycle): Long {
+    private fun revertNextDate(currentDate: Long, cycle: BillingCycle, customCycleDays: Int? = null): Long {
         val calendar = Calendar.getInstance().apply { timeInMillis = currentDate }
         when (cycle) {
             BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, -1)
             BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, -1)
-            BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, -30)
+            BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, -(customCycleDays?.coerceAtLeast(1) ?: 30))
         }
         return calendar.timeInMillis
     }
@@ -152,7 +154,7 @@ class DashboardViewModel(
     fun markAsPaid(sub: SubscriptionEntity) {
         viewModelScope.launch {
             val current = repository.getSubscriptionById(sub.id).firstOrNull() ?: sub
-            val nextDate = calculateNextDate(current.nextBillingDate, current.billingCycle)
+            val nextDate = calculateNextDate(current.nextBillingDate, current.billingCycle, current.customCycleDays)
 
             // Record to history before updating the next billing date
             repository.recordPayment(
@@ -178,12 +180,13 @@ class DashboardViewModel(
     }
 
 
-    private fun calculateNextDate(currentDate: Long, cycle: BillingCycle): Long {
+    private fun calculateNextDate(currentDate: Long, cycle: BillingCycle, customCycleDays: Int? = null): Long {
         val calendar = Calendar.getInstance().apply { timeInMillis = currentDate }
+        val cycleDays = customCycleDays?.coerceAtLeast(1) ?: TimeUtils.DEFAULT_CUSTOM_CYCLE_DAYS
         when (cycle) {
             BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, 1)
             BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, 1)
-            BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, 30)
+            BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, cycleDays)
         }
         
         // If the calculated next date is STILL in the past (e.g. user missed multiple months), 
@@ -193,35 +196,11 @@ class DashboardViewModel(
             when (cycle) {
                 BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, 1)
                 BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, 1)
-                BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, 30)
+                BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, cycleDays)
             }
         }
         
         return calendar.timeInMillis
     }
 
-    private fun calculateCategoryBreakdown(subs: List<SubscriptionEntity>, total: Double): List<CategorySpend> {
-        if (total <= 0) return emptyList()
-
-        val spendByCategoryId = subs.groupBy { it.categoryId }
-            .mapValues { (_, categorySubs) ->
-                categorySubs.sumOf { sub ->
-                    when (sub.billingCycle) {
-                        BillingCycle.MONTHLY -> sub.price
-                        BillingCycle.YEARLY -> sub.price / 12
-                        BillingCycle.CUSTOM -> 0.0
-                    }
-                }
-            }
-
-        return spendByCategoryId.map { (catId, amount) ->
-            val category = CategoryDefaults.categories.find { it.id == catId }
-            CategorySpend(
-                categoryName = category?.name ?: "Other",
-                amount = amount,
-                percentage = (amount / total).toFloat(),
-                colorHex = category?.colorHex ?: "#808080"
-            )
-        }.sortedByDescending { it.amount }.take(4) // Only show top 4 on dashboard
-    }
 }

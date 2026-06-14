@@ -2,10 +2,8 @@ package com.mate.subsmate.ui.insights
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mate.subsmate.data.local.entities.SubscriptionEntity
-import com.mate.subsmate.domain.model.BillingCycle
-import com.mate.subsmate.domain.model.CategoryDefaults
 import com.mate.subsmate.domain.repository.SubscriptionRepository
+import com.mate.subsmate.ui.utils.CategoryUtils
 import kotlinx.coroutines.flow.*
 
 data class CategorySpend(
@@ -37,7 +35,7 @@ class InsightsViewModel(
         repository.getAllPayments()
     ) { subs, total, payments ->
         val monthlyTotal = total ?: 0.0
-        val breakdown = calculateCategoryBreakdown(subs, monthlyTotal)
+        val breakdown = CategoryUtils.calculateCategoryBreakdown(subs, monthlyTotal)
         val history = calculateMonthlyHistory(payments)
         
         InsightsUiState(
@@ -51,31 +49,6 @@ class InsightsViewModel(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = InsightsUiState()
     )
-
-    private fun calculateCategoryBreakdown(subs: List<SubscriptionEntity>, total: Double): List<CategorySpend> {
-        if (total <= 0) return emptyList()
-
-        val spendByCategoryId = subs.groupBy { it.categoryId }
-            .mapValues { (_, categorySubs) ->
-                categorySubs.sumOf { sub ->
-                    when (sub.billingCycle) {
-                        BillingCycle.MONTHLY -> sub.price
-                        BillingCycle.YEARLY -> sub.price / 12
-                        BillingCycle.CUSTOM -> 0.0 // Simplified
-                    }
-                }
-            }
-
-        return spendByCategoryId.map { (catId, amount) ->
-            val category = CategoryDefaults.categories.find { it.id == catId }
-            CategorySpend(
-                categoryName = category?.name ?: "Other",
-                amount = amount,
-                percentage = (amount / total).toFloat(),
-                colorHex = category?.colorHex ?: "#808080"
-            )
-        }.sortedByDescending { it.amount }
-    }
 
     private fun calculateMonthlyHistory(payments: List<com.mate.subsmate.data.local.entities.PaymentHistoryEntity>): List<MonthlySpend> {
         if (payments.isEmpty()) return emptyList()

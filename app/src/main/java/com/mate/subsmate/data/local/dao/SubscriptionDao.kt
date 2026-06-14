@@ -27,6 +27,6 @@ interface SubscriptionDao {
     @Query("UPDATE subscriptions SET categoryId = :newId WHERE categoryId = :oldId")
     suspend fun updateCategoryId(oldId: Int, newId: Int)
 
-    @Query("SELECT SUM(CASE WHEN billingCycle = 'MONTHLY' THEN price WHEN billingCycle = 'YEARLY' THEN price / 12 ELSE 0 END) FROM subscriptions WHERE isActive = 1")
+    @Query("SELECT SUM(CASE WHEN billingCycle = 'MONTHLY' THEN price WHEN billingCycle = 'YEARLY' THEN price / 12.0 WHEN billingCycle = 'CUSTOM' THEN price * 30.0 / MAX(COALESCE(customCycleDays, 30), 1) ELSE 0 END) FROM subscriptions WHERE isActive = 1")
     fun getEstimatedMonthlyTotal(): Flow<Double?>
 }
