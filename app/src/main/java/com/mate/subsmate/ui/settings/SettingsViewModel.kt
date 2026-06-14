@@ -19,7 +19,7 @@ data class SettingsUiState(
     val notificationsEnabled: Boolean = true,
     val cloudSyncEnabled: Boolean = false,
     val userEmail: String? = null,
-    val selectedCurrency: String = "USD",
+    val selectedCurrency: String = "THB",
     val dashboardDayCriteria: Int = 14,
     val paidVisibilityDays: Int = 1
 )
@@ -29,7 +29,7 @@ class SettingsViewModel(private val prefManager: PreferenceManager) : ViewModel(
         SettingsUiState(
             userName = prefManager.getString(PreferenceManager.KEY_USER_NAME, "User"),
             monthlyBudget = prefManager.getDouble(PreferenceManager.KEY_MONTHLY_BUDGET, 0.0),
-            selectedCurrency = prefManager.getString(PreferenceManager.KEY_CURRENCY, "USD"),
+            selectedCurrency = prefManager.getString(PreferenceManager.KEY_CURRENCY, "THB"),
             dashboardDayCriteria = prefManager.getInt(PreferenceManager.KEY_DASHBOARD_DAYS, 14),
             notificationsEnabled = prefManager.getBoolean(PreferenceManager.KEY_NOTIFICATIONS, true),
             theme = AppTheme.valueOf(prefManager.getString(PreferenceManager.KEY_THEME, AppTheme.SYSTEM.name)),

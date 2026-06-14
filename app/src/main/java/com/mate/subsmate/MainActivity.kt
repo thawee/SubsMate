@@ -56,11 +56,8 @@ class MainActivity : ComponentActivity() {
         // Schedule notifications
         RenewalNotificationWorker.schedule(applicationContext)
 
-        // Manual DI for the prototype
-        val db = androidx.room.Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java, "subsmate-db"
-        ).fallbackToDestructiveMigration().build()
+        // Manual DI for the prototype using singleton
+        val db = AppDatabase.getInstance(applicationContext)
         
         // Data Migration: Merge Entertainment (6) into Streaming (1)
         CoroutineScope(Dispatchers.IO).launch {
@@ -186,7 +183,10 @@ fun MainApp(
             }
             composable(Screen.Insights.route) {
                 val viewModel = remember { InsightsViewModel(repository) }
-                InsightsScreen(viewModel = viewModel)
+                InsightsScreen(
+                    viewModel = viewModel,
+                    currency = settingsState.selectedCurrency
+                )
             }
             composable(Screen.Subscriptions.route) {
                 val viewModel = remember { SubscriptionsViewModel(repository) }

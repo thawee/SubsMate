@@ -33,6 +33,7 @@ import com.mate.subsmate.domain.model.TemplateLibrary
 import com.mate.subsmate.ui.theme.GlassyCard
 import com.mate.subsmate.ui.utils.VendorUtils
 import com.mate.subsmate.ui.utils.IconUtils
+import com.mate.subsmate.ui.utils.CurrencyUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -44,9 +45,23 @@ fun AddSubscriptionScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currencySymbol = if (currency == "THB") "฿" else "$"
+    val currencySymbol = CurrencyUtils.getSymbol(currency)
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val isDark = isSystemInDarkTheme()
+
+    val isNameValid = uiState.name.isNotBlank()
+    val isPriceValid = uiState.isVariablePrice || uiState.price.toDoubleOrNull() != null
+    val isLoanValid = !uiState.isLoan || (
+        uiState.totalInstallments.toIntOrNull()?.let { total ->
+            val current = uiState.currentInstallment.toIntOrNull() ?: 0
+            val initialPrincipal = uiState.totalLoanAmount.toDoubleOrNull() ?: 0.0
+            val rate = if (uiState.interestRate.isEmpty()) 0.0 else uiState.interestRate.toDoubleOrNull()
+            val extra = if (uiState.extraPrincipalPaid.isEmpty()) 0.0 else uiState.extraPrincipalPaid.toDoubleOrNull()
+            
+            total > 0 && current >= 0 && current <= total && initialPrincipal > 0.0 && rate != null && rate >= 0.0 && extra != null && extra >= 0.0
+        } == true
+    )
+    val isFormValid = isNameValid && isPriceValid && isLoanValid
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTrialDatePicker by remember { mutableStateOf(false) }
@@ -157,11 +172,29 @@ fun AddSubscriptionScreen(
                         )
                     )
 
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Variable Amount", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Text("For bills with changing amounts", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                        }
+                        Switch(
+                            checked = uiState.isVariablePrice,
+                            onCheckedChange = { viewModel.onVariablePriceToggle(it) }
+                        )
+                    }
+
+                    HorizontalDivider(color = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
+
                     OutlinedTextField(
                         value = uiState.price,
                         onValueChange = { viewModel.onPriceChange(it) },
-                        label = { Text("Price ($currencySymbol)") },
+                        label = { Text(if (uiState.isVariablePrice) "Estimated Price ($currencySymbol) (Optional)" else "Price ($currencySymbol)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = uiState.price.isNotEmpty() && uiState.price.toDoubleOrNull() == null,
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -231,6 +264,114 @@ fun AddSubscriptionScreen(
                         ) {
                             Text("Manual")
                         }
+                    }
+                }
+            }
+
+            // Installment / Loan tracking
+            GlassyCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Loan / Leasing Payment", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Text("Track finite installments and amortization", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                        }
+                        Switch(
+                            checked = uiState.isLoan,
+                            onCheckedChange = { viewModel.onLoanToggle(it) }
+                        )
+                    }
+
+                    if (uiState.isLoan) {
+                        HorizontalDivider(color = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.totalInstallments,
+                                onValueChange = { viewModel.onTotalInstallmentsChange(it) },
+                                label = { Text("Total Terms (Months)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                isError = uiState.totalInstallments.isNotEmpty() && (uiState.totalInstallments.toIntOrNull() == null || uiState.totalInstallments.toIntOrNull()!! <= 0),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                                )
+                            )
+
+                            OutlinedTextField(
+                                value = uiState.currentInstallment,
+                                onValueChange = { viewModel.onCurrentInstallmentChange(it) },
+                                label = { Text("Already Paid Terms") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                isError = uiState.currentInstallment.isNotEmpty() && (
+                                    uiState.currentInstallment.toIntOrNull() == null || 
+                                    uiState.currentInstallment.toIntOrNull()!! < 0 || 
+                                    (uiState.totalInstallments.toIntOrNull()?.let { uiState.currentInstallment.toIntOrNull()!! > it } == true)
+                                ),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                                )
+                            )
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.totalLoanAmount,
+                                onValueChange = { viewModel.onTotalLoanAmountChange(it) },
+                                label = { Text("Initial Principal") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                isError = uiState.totalLoanAmount.isNotEmpty() && (uiState.totalLoanAmount.toDoubleOrNull() == null || uiState.totalLoanAmount.toDoubleOrNull()!! <= 0.0),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                                )
+                            )
+
+                            OutlinedTextField(
+                                value = uiState.interestRate,
+                                onValueChange = { viewModel.onInterestRateChange(it) },
+                                label = { Text("Interest Rate (% APR)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                isError = uiState.interestRate.isNotEmpty() && (uiState.interestRate.toDoubleOrNull() == null || uiState.interestRate.toDoubleOrNull()!! < 0.0),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                                )
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value = uiState.extraPrincipalPaid,
+                            onValueChange = { viewModel.onExtraPrincipalPaidChange(it) },
+                            label = { Text("Extra Principal Paid (Optional)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            isError = uiState.extraPrincipalPaid.isNotEmpty() && (uiState.extraPrincipalPaid.toDoubleOrNull() == null || uiState.extraPrincipalPaid.toDoubleOrNull()!! < 0.0),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                            )
+                        )
                     }
                 }
             }
@@ -310,7 +451,8 @@ fun AddSubscriptionScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Button(
-                onClick = { viewModel.saveSubscription() },
+                onClick = { viewModel.saveSubscription(currency) },
+                enabled = isFormValid,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(

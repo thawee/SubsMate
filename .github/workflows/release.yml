@@ -1,8 +1,9 @@
 name: Build and Release APK
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch: # Allow manual trigger for testing
 
 jobs:
@@ -25,20 +26,26 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Build APKs
+        run: ./gradlew assembleDebug assembleRelease
 
-      - name: Upload APK to Release
-        if: github.event_name == 'release'
+      - name: Create Release and Upload APKs
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release-unsigned.apk
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload APK Artifact (Manual Run)
+      - name: Upload APK Artifacts (Manual Run)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: subsmate-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: subsmate-apks
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release-unsigned.apk

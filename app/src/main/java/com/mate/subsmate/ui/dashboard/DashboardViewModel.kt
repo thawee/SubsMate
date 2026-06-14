@@ -126,9 +126,16 @@ class DashboardViewModel(
 
     fun undoPayment(sub: SubscriptionEntity) {
         viewModelScope.launch {
-            val previousDate = revertNextDate(sub.nextBillingDate, sub.billingCycle)
-            repository.undoPayment(sub.id)
-            repository.updateSubscription(sub.copy(nextBillingDate = previousDate))
+            val current = repository.getSubscriptionById(sub.id).firstOrNull() ?: sub
+            val previousDate = revertNextDate(current.nextBillingDate, current.billingCycle)
+            repository.undoPayment(current.id)
+            val isLoanCompleted = current.totalInstallments != null && (current.currentInstallment - 1) >= current.totalInstallments
+            val updatedSub = current.copy(
+                nextBillingDate = previousDate,
+                currentInstallment = if (current.totalInstallments != null) (current.currentInstallment - 1).coerceAtLeast(0) else current.currentInstallment,
+                isActive = !isLoanCompleted
+            )
+            repository.updateSubscription(updatedSub)
         }
     }
 
@@ -144,22 +151,29 @@ class DashboardViewModel(
 
     fun markAsPaid(sub: SubscriptionEntity) {
         viewModelScope.launch {
-            val nextDate = calculateNextDate(sub.nextBillingDate, sub.billingCycle)
+            val current = repository.getSubscriptionById(sub.id).firstOrNull() ?: sub
+            val nextDate = calculateNextDate(current.nextBillingDate, current.billingCycle)
 
             // Record to history before updating the next billing date
             repository.recordPayment(
                 com.mate.subsmate.data.local.entities.PaymentHistoryEntity(
-                    subscriptionId = sub.id,
-                    subscriptionName = sub.name,
-                    amount = sub.price,
-                    currency = sub.currency,
+                    subscriptionId = current.id,
+                    subscriptionName = current.name,
+                    amount = current.price,
+                    currency = current.currency,
                     paymentDate = System.currentTimeMillis(),
-                    billingPeriodStart = sub.nextBillingDate,
+                    billingPeriodStart = current.nextBillingDate,
                     billingPeriodEnd = nextDate
                 )
             )
 
-            repository.updateSubscription(sub.copy(nextBillingDate = nextDate))
+            val isCompleted = current.totalInstallments != null && (current.currentInstallment + 1) >= current.totalInstallments
+            val updatedSub = current.copy(
+                nextBillingDate = nextDate,
+                currentInstallment = if (current.totalInstallments != null) current.currentInstallment + 1 else current.currentInstallment,
+                isActive = !isCompleted
+            )
+            repository.updateSubscription(updatedSub)
         }
     }
 

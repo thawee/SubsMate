@@ -29,7 +29,14 @@ data class AddSubscriptionUiState(
     val colorHex: String = "#6200EE",
     val iconName: String = "category",
     val isSaved: Boolean = false,
-    val selectedTemplate: ServiceTemplate? = null
+    val selectedTemplate: ServiceTemplate? = null,
+    val isVariablePrice: Boolean = false,
+    val isLoan: Boolean = false,
+    val totalInstallments: String = "",
+    val currentInstallment: String = "",
+    val totalLoanAmount: String = "",
+    val interestRate: String = "",
+    val extraPrincipalPaid: String = ""
 )
 
 class AddSubscriptionViewModel(
@@ -50,7 +57,7 @@ class AddSubscriptionViewModel(
                     it.copy(
                         id = sub.id,
                         name = sub.name,
-                        price = sub.price.toString(),
+                        price = if (sub.isVariablePrice && sub.price == 0.0) "" else sub.price.toString(),
                         categoryId = sub.categoryId,
                         billingCycle = sub.billingCycle,
                         paymentType = sub.paymentType,
@@ -59,7 +66,14 @@ class AddSubscriptionViewModel(
                         trialEndDate = sub.trialEndDate,
                         reminderDaysBefore = sub.reminderDaysBefore,
                         colorHex = sub.colorHex ?: "#6200EE",
-                        iconName = sub.iconResId ?: "category"
+                        iconName = sub.iconResId ?: "category",
+                        isVariablePrice = sub.isVariablePrice,
+                        isLoan = sub.totalInstallments != null,
+                        totalInstallments = sub.totalInstallments?.toString() ?: "",
+                        currentInstallment = sub.currentInstallment.toString(),
+                        totalLoanAmount = sub.totalLoanAmount?.toString() ?: "",
+                        interestRate = sub.interestRate?.toString() ?: "",
+                        extraPrincipalPaid = if (sub.extraPrincipalPaid == 0.0) "" else sub.extraPrincipalPaid.toString()
                     )
                 }
                 isLoaded = true
@@ -119,8 +133,37 @@ class AddSubscriptionViewModel(
         _uiState.update { it.copy(reminderDaysBefore = daysBefore) }
     }
 
+    fun onVariablePriceToggle(isVariable: Boolean) {
+        _uiState.update { it.copy(isVariablePrice = isVariable) }
+    }
+
+    fun onLoanToggle(isLoan: Boolean) {
+        _uiState.update { it.copy(isLoan = isLoan) }
+    }
+
+    fun onTotalInstallmentsChange(value: String) {
+        _uiState.update { it.copy(totalInstallments = value) }
+    }
+
+    fun onCurrentInstallmentChange(value: String) {
+        _uiState.update { it.copy(currentInstallment = value) }
+    }
+
+    fun onTotalLoanAmountChange(value: String) {
+        _uiState.update { it.copy(totalLoanAmount = value) }
+    }
+
+    fun onInterestRateChange(value: String) {
+        _uiState.update { it.copy(interestRate = value) }
+    }
+
+    fun onExtraPrincipalPaidChange(value: String) {
+        _uiState.update { it.copy(extraPrincipalPaid = value) }
+    }
+
     fun onTemplateSelected(template: ServiceTemplate) {
         _uiState.update {
+            val isVariable = template.monthlyPrice == null && template.yearlyPrice == null
             it.copy(
                 name = template.name,
                 price = template.monthlyPrice?.toString() ?: template.yearlyPrice?.toString() ?: "",
@@ -128,14 +171,29 @@ class AddSubscriptionViewModel(
                 categoryId = template.categoryId,
                 colorHex = template.colorHex,
                 iconName = template.iconName,
-                selectedTemplate = template
+                selectedTemplate = template,
+                isVariablePrice = isVariable
             )
         }
     }
 
-    fun saveSubscription() {
+    fun saveSubscription(currency: String) {
         val state = _uiState.value
-        if (state.name.isBlank() || state.price.toDoubleOrNull() == null) return
+        val isPriceValid = state.isVariablePrice || state.price.toDoubleOrNull() != null
+        val totalInstallmentsVal = if (state.isLoan) state.totalInstallments.toIntOrNull() else null
+        val currentInstallmentVal = if (state.isLoan) state.currentInstallment.toIntOrNull() ?: 0 else 0
+        val totalLoanAmountVal = if (state.isLoan) state.totalLoanAmount.toDoubleOrNull() else null
+        val interestRateVal = if (state.isLoan) state.interestRate.toDoubleOrNull() else null
+        val extraPrincipalPaidVal = if (state.isLoan) state.extraPrincipalPaid.toDoubleOrNull() ?: 0.0 else 0.0
+
+        val isLoanValid = !state.isLoan || (
+            totalInstallmentsVal != null && totalInstallmentsVal > 0 &&
+            currentInstallmentVal >= 0 && currentInstallmentVal <= totalInstallmentsVal &&
+            totalLoanAmountVal != null && totalLoanAmountVal > 0.0 &&
+            (interestRateVal == null || interestRateVal >= 0.0) &&
+            extraPrincipalPaidVal >= 0.0
+        )
+        if (state.name.isBlank() || !isPriceValid || !isLoanValid) return
 
         viewModelScope.launch {
             // If editing, we might want to preserve lastNotifiedDate
@@ -147,10 +205,30 @@ class AddSubscriptionViewModel(
                 calculateNextBillingDate(state.firstBillingDate, state.billingCycle)
             }
 
+            val finalPrice = if (state.isVariablePrice) {
+                state.price.toDoubleOrNull() ?: 0.0
+            } else {
+                state.price.toDouble()
+            }
+
+            val isLoanCompleted = state.isLoan && totalInstallmentsVal != null && currentInstallmentVal >= totalInstallmentsVal
+            val activeStatus = if (isLoanCompleted) {
+                false
+            } else if (existingSub != null) {
+                if (state.isLoan && totalInstallmentsVal != null && currentInstallmentVal < totalInstallmentsVal) {
+                    true
+                } else {
+                    existingSub.isActive
+                }
+            } else {
+                true
+            }
+
             val entity = SubscriptionEntity(
                 id = state.id,
                 name = state.name,
-                price = state.price.toDouble(),
+                price = finalPrice,
+                currency = currency,
                 categoryId = state.categoryId,
                 billingCycle = state.billingCycle,
                 paymentType = state.paymentType,
@@ -161,7 +239,14 @@ class AddSubscriptionViewModel(
                 reminderDaysBefore = state.reminderDaysBefore,
                 colorHex = state.colorHex,
                 iconResId = state.iconName,
-                lastNotifiedDate = existingSub?.lastNotifiedDate
+                isActive = activeStatus,
+                lastNotifiedDate = existingSub?.lastNotifiedDate,
+                isVariablePrice = state.isVariablePrice,
+                totalInstallments = totalInstallmentsVal,
+                currentInstallment = currentInstallmentVal,
+                totalLoanAmount = totalLoanAmountVal,
+                interestRate = interestRateVal,
+                extraPrincipalPaid = extraPrincipalPaidVal
             )
             repository.insertSubscription(entity)
             _uiState.update { it.copy(isSaved = true) }

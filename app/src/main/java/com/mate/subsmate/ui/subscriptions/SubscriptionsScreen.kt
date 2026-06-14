@@ -28,6 +28,8 @@ import com.mate.subsmate.data.local.entities.SubscriptionEntity
 import com.mate.subsmate.ui.theme.GlassNavy
 import com.mate.subsmate.ui.utils.VendorUtils
 import com.mate.subsmate.ui.utils.IconUtils
+import com.mate.subsmate.ui.utils.LoanUtils
+import com.mate.subsmate.ui.utils.CurrencyUtils
 import com.mate.subsmate.ui.theme.GlassyCard
 import java.text.SimpleDateFormat
 import java.util.*
@@ -41,7 +43,8 @@ fun SubscriptionsScreen(
     onNavigateToEdit: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currencySymbol = if (currency == "THB") "฿" else "$"
+    val currencySymbol = CurrencyUtils.getSymbol(currency)
+    var subscriptionToDelete by remember { mutableStateOf<SubscriptionEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -77,12 +80,35 @@ fun SubscriptionsScreen(
                         subscription = sub,
                         currencySymbol = currencySymbol,
                         onEdit = { onNavigateToEdit(sub.id) },
-                        onDelete = { viewModel.deleteSubscription(sub) }
+                        onDelete = { subscriptionToDelete = sub }
                     )
                 }
                 item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
+    }
+
+    if (subscriptionToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { subscriptionToDelete = null },
+            title = { Text("Delete Subscription") },
+            text = { Text("Are you sure you want to delete ${subscriptionToDelete?.name}?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        subscriptionToDelete?.let { viewModel.deleteSubscription(it) }
+                        subscriptionToDelete = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { subscriptionToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -150,15 +176,49 @@ fun SubscriptionManageItem(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "${subscription.billingCycle.name.lowercase().replaceFirstChar { it.uppercase() }} • Next: ${dateFormatter.format(Date(subscription.nextBillingDate))}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
+                if (subscription.totalInstallments != null) {
+                    val progress = (subscription.currentInstallment.toFloat() / subscription.totalInstallments).coerceIn(0f, 1f)
+                    Text(
+                        text = "Payment ${subscription.currentInstallment} / ${subscription.totalInstallments} (${subscription.totalInstallments - subscription.currentInstallment} left)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
+                        color = subscription.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                    )
+                    if (subscription.totalLoanAmount != null) {
+                        val balance = LoanUtils.calculateRemainingBalance(
+                            initialPrincipal = subscription.totalLoanAmount,
+                            monthlyPayment = subscription.price,
+                            annualInterestRate = subscription.interestRate,
+                            installmentsPaid = subscription.currentInstallment,
+                            extraPrincipalPaid = subscription.extraPrincipalPaid
+                        )
+                        Text(
+                            text = "Est. Balance: $currencySymbol${String.format("%,.0f", balance)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "${subscription.billingCycle.name.lowercase().replaceFirstChar { it.uppercase() }} • Next: ${dateFormatter.format(Date(subscription.nextBillingDate))}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
+                val priceText = when {
+                    subscription.isVariablePrice && subscription.price == 0.0 -> "Variable"
+                    subscription.isVariablePrice -> "Est. $currencySymbol${String.format("%,.2f", subscription.price)}"
+                    else -> "$currencySymbol${String.format("%,.2f", subscription.price)}"
+                }
                 Text(
-                    text = "$currencySymbol${String.format("%,.2f", subscription.price)}",
+                    text = priceText,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyLarge

@@ -17,10 +17,7 @@ class RenewalNotificationWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        val db = androidx.room.Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java, "subsmate-db"
-        ).fallbackToDestructiveMigration().build()
+        val db = AppDatabase.getInstance(applicationContext)
 
         val dao = db.subscriptionDao()
         val subscriptions = dao.getActiveSubscriptionsOneShot()
@@ -53,17 +50,29 @@ class RenewalNotificationWorker(
                     )
                 )
 
-                dao.updateSubscription(sub.copy(nextBillingDate = nextDate, lastNotifiedDate = null))
+                val isCompleted = sub.totalInstallments != null && (sub.currentInstallment + 1) >= sub.totalInstallments
+                dao.updateSubscription(sub.copy(
+                    nextBillingDate = nextDate,
+                    currentInstallment = if (sub.totalInstallments != null) sub.currentInstallment + 1 else sub.currentInstallment,
+                    isActive = !isCompleted,
+                    lastNotifiedDate = null
+                ))
                 return@forEach // Skip notification for this run as it's renewed
             }
 
             // Check for Renewal
             if (sub.nextBillingDate in now..windowEnd) {
                 if (sub.lastNotifiedDate == null || sub.lastNotifiedDate < todayStart) {
+                    val symbol = com.mate.subsmate.ui.utils.CurrencyUtils.getSymbol(sub.currency)
+                    val priceMessage = when {
+                        sub.isVariablePrice && sub.price == 0.0 -> ""
+                        sub.isVariablePrice -> " (Est. $symbol${String.format("%.2f", sub.price)})"
+                        else -> " for $symbol${String.format("%.2f", sub.price)}"
+                    }
                     showNotification(
                         sub.id.toInt(),
                         "Subscription Renewal",
-                        "${sub.name} is renewing soon for ${sub.currency}${sub.price}"
+                        "${sub.name} is renewing soon$priceMessage"
                     )
                     dao.updateSubscription(sub.copy(lastNotifiedDate = now))
                 }

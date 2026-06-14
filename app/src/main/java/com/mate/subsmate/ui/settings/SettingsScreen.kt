@@ -1,6 +1,7 @@
 package com.mate.subsmate.ui.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
@@ -25,6 +26,10 @@ import com.mate.subsmate.ui.theme.GlassyCard
 fun SettingsScreen(viewModel: SettingsViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showCurrencyDialog by remember { mutableStateOf(false) }
+    var showCustomCurrencyInput by remember { mutableStateOf(false) }
+    var customCurrencyCode by remember { mutableStateOf("") }
+    val isDark = isSystemInDarkTheme()
 
     Scaffold(
         topBar = {
@@ -45,11 +50,11 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
             // Pro Section
-            item {
-                ProBanner(isPro = uiState.isPro) {
-                    viewModel.upgradeToPro()
-                }
-            }
+           // item {
+           //     ProBanner(isPro = uiState.isPro) {
+           //         viewModel.upgradeToPro()
+           //     }
+           // }
 
             item { SectionHeader("Profile & Budget") }
 
@@ -65,7 +70,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                                unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
                             )
                         )
 
@@ -82,7 +87,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                             leadingIcon = { Icon(Icons.Default.Payments, contentDescription = null) },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.2f)
+                                unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
                             )
                         )
                     }
@@ -114,8 +119,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                             subtitle = uiState.selectedCurrency,
                             icon = Icons.Default.Payments,
                             onClick = { 
-                                val next = if (uiState.selectedCurrency == "USD") "THB" else "USD"
-                                viewModel.setCurrency(next)
+                                showCurrencyDialog = true
                             }
                         )
                     }
@@ -215,6 +219,119 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             },
             confirmButton = {
                 TextButton(onClick = { showThemeDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showCurrencyDialog) {
+        val popularCurrencies = listOf("THB", "USD", "EUR", "GBP", "JPY")
+        val isCustomActive = !popularCurrencies.contains(uiState.selectedCurrency)
+        
+        LaunchedEffect(showCurrencyDialog) {
+            if (isCustomActive) {
+                customCurrencyCode = uiState.selectedCurrency
+                showCustomCurrencyInput = true
+            } else {
+                showCustomCurrencyInput = false
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { 
+                showCurrencyDialog = false
+                showCustomCurrencyInput = false
+            },
+            title = { Text("Select Currency") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    popularCurrencies.forEach { currency ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setCurrency(currency)
+                                    showCurrencyDialog = false
+                                    showCustomCurrencyInput = false
+                                }
+                                .padding(vertical = 12.dp)
+                        ) {
+                            RadioButton(
+                                selected = uiState.selectedCurrency == currency && !showCustomCurrencyInput,
+                                onClick = {
+                                    viewModel.setCurrency(currency)
+                                    showCurrencyDialog = false
+                                    showCustomCurrencyInput = false
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(currency)
+                        }
+                    }
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showCustomCurrencyInput = true
+                            }
+                            .padding(vertical = 12.dp)
+                    ) {
+                        RadioButton(
+                            selected = showCustomCurrencyInput,
+                            onClick = {
+                                showCustomCurrencyInput = true
+                            }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Custom...")
+                    }
+                    
+                    if (showCustomCurrencyInput) {
+                        OutlinedTextField(
+                            value = customCurrencyCode,
+                            onValueChange = { 
+                                if (it.length <= 3) {
+                                    customCurrencyCode = it.uppercase()
+                                }
+                            },
+                            label = { Text("Currency Code (e.g. AUD)") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                            ),
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (showCustomCurrencyInput) {
+                            if (customCurrencyCode.length == 3) {
+                                viewModel.setCurrency(customCurrencyCode)
+                                showCurrencyDialog = false
+                                showCustomCurrencyInput = false
+                            }
+                        } else {
+                            showCurrencyDialog = false
+                        }
+                    },
+                    enabled = !showCustomCurrencyInput || (customCurrencyCode.length == 3)
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { 
+                    showCurrencyDialog = false 
+                    showCustomCurrencyInput = false
+                }) {
                     Text("Cancel")
                 }
             }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -31,6 +32,8 @@ import com.mate.subsmate.ui.insights.CategorySpend
 import com.mate.subsmate.ui.theme.*
 import com.mate.subsmate.ui.utils.VendorUtils
 import com.mate.subsmate.ui.utils.IconUtils
+import com.mate.subsmate.ui.utils.LoanUtils
+import com.mate.subsmate.ui.utils.CurrencyUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -41,7 +44,7 @@ fun DashboardScreen(
     currency: String
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currencySymbol = if (currency == "THB") "฿" else "$"
+    val currencySymbol = CurrencyUtils.getSymbol(currency)
     val today = remember { SimpleDateFormat("EEEE, dd MMM yyyy", Locale.getDefault()).format(Date()) }
 
     Scaffold(
@@ -236,6 +239,29 @@ fun BudgetUsageCard(spent: Double, budget: Double, yearly: Double, currencySymbo
                     }
                 }
             }
+
+            if (isOverBudget) {
+                HorizontalDivider(color = innerCardBorder, modifier = Modifier.padding(vertical = 4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Alert: You have exceeded your monthly budget by $currencySymbol${String.format("%,.2f", spent - budget)}! Consider cancelling unused subscriptions.",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }
@@ -374,11 +400,58 @@ fun SubscriptionItem(
                     fontWeight = FontWeight.Bold,
                     color = statusColor
                 )
-                Text(
-                    text = sub.billingCycle.name.lowercase().replaceFirstChar { it.uppercase() },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
+
+                if (sub.totalInstallments != null) {
+                    val progress = (sub.currentInstallment.toFloat() / sub.totalInstallments).coerceIn(0f, 1f)
+                    Text(
+                        text = "Payment ${sub.currentInstallment} / ${sub.totalInstallments} (${sub.totalInstallments - sub.currentInstallment} left)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
+                        color = sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                    )
+                    if (sub.totalLoanAmount != null) {
+                        val balance = LoanUtils.calculateRemainingBalance(
+                            initialPrincipal = sub.totalLoanAmount,
+                            monthlyPayment = sub.price,
+                            annualInterestRate = sub.interestRate,
+                            installmentsPaid = sub.currentInstallment,
+                            extraPrincipalPaid = sub.extraPrincipalPaid
+                        )
+                        Text(
+                            text = "Est. Balance: $currencySymbol${String.format("%,.0f", balance)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                        sub.interestRate?.let { rate ->
+                            if (rate > 0.0) {
+                                val split = LoanUtils.calculateNextPaymentSplit(
+                                    initialPrincipal = sub.totalLoanAmount,
+                                    monthlyPayment = sub.price,
+                                    annualInterestRate = rate,
+                                    installmentsPaid = sub.currentInstallment,
+                                    extraPrincipalPaid = sub.extraPrincipalPaid
+                                )
+                                Text(
+                                    text = "Split - Princ: $currencySymbol${String.format("%,.0f", split.principal)} | Int: $currencySymbol${String.format("%,.0f", split.interest)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = sub.billingCycle.name.lowercase().replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -444,8 +517,13 @@ fun SubscriptionItem(
                     }
                 }
 
+                val priceText = when {
+                    sub.isVariablePrice && sub.price == 0.0 -> "Variable"
+                    sub.isVariablePrice -> "Est. $currencySymbol${String.format("%,.2f", sub.price)}"
+                    else -> "$currencySymbol${String.format("%,.2f", sub.price)}"
+                }
                 Text(
-                    text = "$currencySymbol${String.format("%,.2f", sub.price)}",
+                    text = priceText,
                     fontWeight = FontWeight.ExtraBold,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
