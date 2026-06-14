@@ -29,6 +29,7 @@ import coil.compose.AsyncImage
 import com.mate.subsmate.data.local.entities.SubscriptionEntity
 import com.mate.subsmate.domain.model.PaymentType
 import com.mate.subsmate.ui.insights.CategorySpend
+import com.mate.subsmate.ui.insights.MonthlySpend
 import com.mate.subsmate.ui.theme.*
 import com.mate.subsmate.ui.utils.VendorUtils
 import com.mate.subsmate.ui.utils.IconUtils
@@ -98,6 +99,12 @@ fun DashboardScreen(
                     mostExpensive = uiState.mostExpensive,
                     currencySymbol = currencySymbol
                 )
+            }
+
+            if (uiState.monthlyHistory.isNotEmpty()) {
+                item {
+                    SpendingTrendChart(uiState.monthlyHistory, currencySymbol)
+                }
             }
 
             if (uiState.categoryBreakdown.isNotEmpty()) {
@@ -419,6 +426,83 @@ fun StatCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     maxLines = 1
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
+    if (history.isEmpty()) return
+
+    val maxVal = history.maxOfOrNull { it.amount } ?: 1.0
+    val maxAmount = if (maxVal <= 0.0) 1.0 else maxVal
+    val barColor = MaterialTheme.colorScheme.primary
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+
+    val formatCompact = { amount: Double ->
+        when {
+            amount >= 1000000.0 -> "$currencySymbol${String.format("%.1f", amount / 1000000.0)}M"
+            amount >= 1000.0 -> "$currencySymbol${String.format("%.1f", amount / 1000.0)}k"
+            else -> "$currencySymbol${String.format("%.0f", amount)}"
+        }
+    }
+
+    GlassyCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                "Spending Trend",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp),
+                color = Color.Transparent
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    history.forEach { spend ->
+                        val proportion = (spend.amount / maxAmount).toFloat().coerceIn(0.05f, 1f)
+
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.Bottom,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = formatCompact(spend.amount),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = barColor,
+                                fontSize = 9.sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(proportion * 0.8f)
+                                    .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                    .background(barColor)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = spend.monthName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = textColor,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                }
             }
         }
     }

@@ -8,6 +8,7 @@ import com.mate.subsmate.domain.repository.SubscriptionRepository
 import com.mate.subsmate.domain.model.BillingCycle
 import com.mate.subsmate.domain.model.CategoryDefaults
 import com.mate.subsmate.ui.insights.CategorySpend
+import com.mate.subsmate.ui.insights.MonthlySpend
 import com.mate.subsmate.ui.utils.CategoryUtils
 import com.mate.subsmate.ui.utils.TimeUtils
 import kotlinx.coroutines.flow.*
@@ -33,7 +34,8 @@ data class DashboardUiState(
     val activeCount: Int = 0,
     val trialCount: Int = 0,
     val averageCost: Double = 0.0,
-    val mostExpensive: SubscriptionEntity? = null
+    val mostExpensive: SubscriptionEntity? = null,
+    val monthlyHistory: List<MonthlySpend> = emptyList()
 )
 
 class DashboardViewModel(
@@ -109,7 +111,8 @@ class DashboardViewModel(
             activeCount = subs.size,
             trialCount = subs.count { it.isTrial },
             averageCost = if (subs.isNotEmpty()) total / subs.size else 0.0,
-            mostExpensive = subs.maxByOrNull { it.price }
+            mostExpensive = subs.maxByOrNull { it.price },
+            monthlyHistory = calculateMonthlyHistory(allPayments)
         )
     }.stateIn(
         scope = viewModelScope,
@@ -211,4 +214,28 @@ class DashboardViewModel(
         return calendar.timeInMillis
     }
 
+    private fun calculateMonthlyHistory(payments: List<PaymentHistoryEntity>): List<MonthlySpend> {
+        if (payments.isEmpty()) return emptyList()
+
+        val calendar = Calendar.getInstance()
+        val format = java.text.SimpleDateFormat("MMM", java.util.Locale.getDefault())
+
+        val grouped = payments.groupBy { payment ->
+            calendar.timeInMillis = payment.paymentDate
+            val year = calendar.get(Calendar.YEAR)
+            val month = calendar.get(Calendar.MONTH)
+            year * 12 + month
+        }
+
+        val sortedKeys = grouped.keys.sorted().takeLast(6)
+
+        return sortedKeys.map { key ->
+            val monthVal = key % 12
+            val yearVal = key / 12
+            calendar.set(yearVal, monthVal, 1)
+            val monthName = format.format(calendar.time)
+            val totalAmount = grouped[key]?.sumOf { it.amount } ?: 0.0
+            MonthlySpend(monthName = monthName, amount = totalAmount)
+        }
+    }
 }
