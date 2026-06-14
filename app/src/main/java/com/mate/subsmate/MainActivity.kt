@@ -40,7 +40,7 @@ import com.mate.subsmate.ui.settings.SettingsViewModel
 import com.mate.subsmate.ui.subscriptions.SubscriptionsScreen
 import com.mate.subsmate.ui.subscriptions.SubscriptionsViewModel
 import com.mate.subsmate.ui.theme.*
-import kotlinx.coroutines.CoroutineScope
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
         val db = AppDatabase.getInstance(applicationContext)
         
         // Data Migration: Merge Entertainment (6) into Streaming (1)
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             db.subscriptionDao().updateCategoryId(6, 1)
         }
 
