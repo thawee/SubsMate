@@ -175,7 +175,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.White.copy(alpha = 0.1f))
                         SettingClickableItem(
                             title = "About SubsMate",
-                            subtitle = "Version 1.0.0 (Mate Series)",
+                            subtitle = "Version 0.3.0 (Mate Series)",
                             icon = Icons.Default.Info,
                             onClick = { }
                         )

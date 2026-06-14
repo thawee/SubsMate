@@ -11,10 +11,9 @@ android {
     defaultConfig {
         applicationId = "com.mate.subsmate"
         minSdk = 26
-       // targetSdk = 36
+        targetSdk = 35
         versionCode = 3
         versionName = "0.3.0"
-        targetSdk = 35
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
