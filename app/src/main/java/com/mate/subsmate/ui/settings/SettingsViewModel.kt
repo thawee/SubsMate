@@ -14,11 +14,8 @@ enum class AppTheme {
 data class SettingsUiState(
     val userName: String = "User",
     val monthlyBudget: Double = 0.0,
-    val isPro: Boolean = false,
     val theme: AppTheme = AppTheme.SYSTEM,
     val notificationsEnabled: Boolean = true,
-    val cloudSyncEnabled: Boolean = false,
-    val userEmail: String? = null,
     val selectedCurrency: String = "THB",
     val dashboardDayCriteria: Int = 14,
     val paidVisibilityDays: Int = 1
@@ -71,10 +68,5 @@ class SettingsViewModel(private val prefManager: PreferenceManager) : ViewModel(
     fun setPaidVisibilityDays(days: Int) {
         prefManager.setInt(PreferenceManager.KEY_PAID_VISIBILITY, days)
         _uiState.update { it.copy(paidVisibilityDays = days) }
-    }
-
-    fun upgradeToPro() {
-        // Mocking Pro upgrade
-        _uiState.update { it.copy(isPro = true) }
     }
 }

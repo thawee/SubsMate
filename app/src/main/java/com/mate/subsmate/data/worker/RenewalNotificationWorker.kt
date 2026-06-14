@@ -87,7 +87,8 @@ class RenewalNotificationWorker(
                     showNotification(
                         sub.id.toInt(),
                         "Subscription Renewal",
-                        "${sub.name} is renewing soon$priceMessage"
+                        "${sub.name} is renewing soon$priceMessage",
+                        sub.id
                     )
                     dao.updateSubscription(sub.copy(lastNotifiedDate = now))
                 }
@@ -97,9 +98,10 @@ class RenewalNotificationWorker(
             if (sub.isTrial && sub.trialEndDate != null && sub.trialEndDate in now..windowEnd) {
                 if (sub.lastNotifiedDate == null || sub.lastNotifiedDate < todayStart) {
                     showNotification(
-                        sub.id.toInt() + 100000, // Different ID for trial notification
+                        sub.id.toInt() + 100000,
                         "Trial Ending Soon",
-                        "Your trial for ${sub.name} ends in ${sub.reminderDaysBefore} days"
+                        "Your trial for ${sub.name} ends in ${sub.reminderDaysBefore} days",
+                        sub.id
                     )
                     dao.updateSubscription(sub.copy(lastNotifiedDate = now))
                 }
@@ -124,7 +126,7 @@ class RenewalNotificationWorker(
         return calendar.timeInMillis
     }
 
-    private fun showNotification(id: Int, title: String, message: String) {
+    private fun showNotification(id: Int, title: String, message: String, subId: Long = id.toLong()) {
         val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "renewal_notifications"
 
@@ -133,12 +135,32 @@ class RenewalNotificationWorker(
             manager.createNotificationChannel(channel)
         }
 
+        val markPaidIntent = android.content.Intent(NotificationActionReceiver.ACTION_MARK_PAID).apply {
+            putExtra(NotificationActionReceiver.EXTRA_SUB_ID, subId)
+            setPackage(applicationContext.packageName)
+        }
+        val markPaidPendingIntent = android.app.PendingIntent.getBroadcast(
+            applicationContext, subId.toInt(), markPaidIntent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val snoozeIntent = android.content.Intent(NotificationActionReceiver.ACTION_SNOOZE).apply {
+            putExtra(NotificationActionReceiver.EXTRA_SUB_ID, subId)
+            setPackage(applicationContext.packageName)
+        }
+        val snoozePendingIntent = android.app.PendingIntent.getBroadcast(
+            applicationContext, subId.toInt() + 100000, snoozeIntent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setContentTitle(title)
             .setContentText(message)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .addAction(0, "Mark as Paid", markPaidPendingIntent)
+            .addAction(0, "Remind Later", snoozePendingIntent)
             .build()
 
         manager.notify(id, notification)

@@ -15,6 +15,9 @@ interface SubscriptionDao {
     @Query("SELECT * FROM subscriptions WHERE id = :id")
     fun getSubscriptionById(id: Long): Flow<SubscriptionEntity?>
 
+    @Query("SELECT * FROM subscriptions WHERE id = :id")
+    suspend fun getSubscriptionByIdOnce(id: Long): SubscriptionEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSubscription(subscription: SubscriptionEntity)
 

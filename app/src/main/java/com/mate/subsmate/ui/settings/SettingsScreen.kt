@@ -160,26 +160,16 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 }
             }
 
-            item { SectionHeader("Account & Data") }
+            item { SectionHeader("About") }
 
             item {
                 GlassyCard(modifier = Modifier.fillMaxWidth()) {
-                    Column {
-                        SettingToggleItem(
-                            title = "Cloud Sync",
-                            subtitle = "Backup data to Google Drive",
-                            icon = Icons.Default.Cloud,
-                            checked = uiState.cloudSyncEnabled,
-                            onCheckedChange = { /* Toggle sync */ }
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.White.copy(alpha = 0.1f))
-                        SettingClickableItem(
-                            title = "About SubsMate",
-                            subtitle = "Version 0.3.0 (Mate Series)",
-                            icon = Icons.Default.Info,
-                            onClick = { }
-                        )
-                    }
+                    SettingClickableItem(
+                        title = "SubsMate",
+                        subtitle = "Version 0.3.0 (Mate Series)",
+                        icon = Icons.Default.Info,
+                        onClick = { }
+                    )
                 }
             }
             
@@ -336,53 +326,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 }
             }
         )
-    }
-}
-
-@Composable
-fun ProBanner(isPro: Boolean, onUpgrade: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isPro) MaterialTheme.colorScheme.tertiaryContainer 
-                            else MaterialTheme.colorScheme.primary
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                Icons.Default.Star, 
-                contentDescription = null, 
-                tint = if (isPro) MaterialTheme.colorScheme.tertiary else Color.White,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = if (isPro) "You are a Pro User!" else "Upgrade to SubsMate Pro",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = if (isPro) MaterialTheme.colorScheme.onTertiaryContainer else Color.White
-            )
-            Text(
-                text = if (isPro) "Enjoy unlimited subscriptions & cloud sync." 
-                       else "Unlock unlimited subscriptions and widgets.",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (isPro) MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.8f)
-            )
-            if (!isPro) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Button(
-                    onClick = onUpgrade,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
-                ) {
-                    Text("Go Pro")
-                }
-            }
-        }
     }
 }
 
