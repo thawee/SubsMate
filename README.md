@@ -1,6 +1,6 @@
 # SubsMate - Android Subscription Tracker
 
-SubsMate is a clean, minimal, and powerful subscription management app for Android. Part of the **Mate Series** (MusicMate, TradingMate, FarmMate), it helps users visualize their recurring costs and avoid "financial leaks."
+SubsMate is a clean, minimal, and powerful app for tracking subscriptions, loans, and recurring costs on Android. Part of the **Mate Series** (MusicMate, TradingMate, FarmMate), it helps users visualize their recurring payments and avoid "financial leaks."
 
 ## 🚀 Key Features
 

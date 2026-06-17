@@ -1,4 +1,4 @@
-# SubsMate - Android Subscription Tracker
+# SubsMate - Android Subscription & Loan Tracker
 
 ## Vision
 You probably have more subscriptions than you think. SubsMate helps you see exactly how much you’re paying every month and every year — so you can take control before small charges turn into big leaks.
