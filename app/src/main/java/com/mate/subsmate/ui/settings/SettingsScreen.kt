@@ -77,7 +77,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                         OutlinedTextField(
                             value = if (uiState.monthlyBudget == 0.0) "" else uiState.monthlyBudget.toString(),
                             onValueChange = { 
-                                val budget = it.toDoubleOrNull() ?: 0.0
+                                val budget = it.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0
                                 viewModel.onBudgetChange(budget) 
                             },
                             label = { Text("Monthly Budget (${uiState.selectedCurrency})") },
@@ -106,14 +106,14 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                             checked = uiState.notificationsEnabled,
                             onCheckedChange = { viewModel.toggleNotifications(it) }
                         )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.White.copy(alpha = 0.1f))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         SettingClickableItem(
                             title = "App Theme",
                             subtitle = uiState.theme.name.lowercase().replaceFirstChar { it.uppercase() },
                             icon = Icons.Default.Settings,
                             onClick = { showThemeDialog = true }
                         )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.White.copy(alpha = 0.1f))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         SettingClickableItem(
                             title = "Main Currency",
                             subtitle = uiState.selectedCurrency,
@@ -129,20 +129,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             item {
                 GlassyCard(modifier = Modifier.fillMaxWidth()) {
                     Column {
-                        SettingClickableItem(
-                            title = "Dashboard View",
-                            subtitle = "Show charges within ${uiState.dashboardDayCriteria} days",
-                            icon = Icons.Default.DateRange,
-                            onClick = { 
-                                val next = when (uiState.dashboardDayCriteria) {
-                                    7 -> 14
-                                    14 -> 30
-                                    else -> 7
-                                }
-                                viewModel.setDashboardDayCriteria(next)
-                            }
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = Color.White.copy(alpha = 0.1f))
                         SettingClickableItem(
                             title = "Paid Visibility",
                             subtitle = "Keep 'Paid' items for ${uiState.paidVisibilityDays} days",

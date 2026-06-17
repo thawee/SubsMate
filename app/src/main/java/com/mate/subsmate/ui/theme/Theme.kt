@@ -18,37 +18,70 @@ import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = Navy700,
-    secondary = Slate500,
-    tertiary = Emerald500,
-    background = Color(0xFF0F172A), // Midnight Blue
-    surface = GlassNavy,
     onPrimary = Color.White,
+    primaryContainer = Navy800,
+    onPrimaryContainer = Color.White,
+    secondary = Slate500,
     onSecondary = Color.White,
+    secondaryContainer = DarkSurfaceVariant,
+    onSecondaryContainer = Color.White,
+    tertiary = Emerald500,
     onTertiary = Color.White,
+    tertiaryContainer = Color(0xFF064E3B),
+    onTertiaryContainer = Color.White,
+    background = Color(0xFF0F172A),
     onBackground = Color.White,
+    surface = DarkSurface,
     onSurface = Color.White,
-    error = ErrorRed
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = DarkOnSurfaceVariant,
+    surfaceContainerLow = DarkSurface,
+    surfaceContainer = DarkSurfaceVariant,
+    surfaceContainerHigh = Color(0xFF1E293B),
+    surfaceContainerHighest = Color(0xFF273352),
+    outline = DarkOutline,
+    outlineVariant = DarkOutline,
+    error = ErrorRed,
+    onError = Color.White,
+    errorContainer = DarkErrorContainer,
+    onErrorContainer = DarkOnErrorContainer,
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = Navy900,
-    secondary = Slate600,
-    tertiary = Emerald600,
-    background = OffWhite,
-    surface = GlassWhite,
     onPrimary = Color.White,
+    primaryContainer = Color(0xFFDBEAFE),
+    onPrimaryContainer = Navy900,
+    secondary = Slate600,
     onSecondary = Color.White,
+    secondaryContainer = LightSurfaceVariant,
+    onSecondaryContainer = Slate700,
+    tertiary = Emerald600,
     onTertiary = Color.White,
+    tertiaryContainer = Color(0xFFD1FAE5),
+    onTertiaryContainer = Color(0xFF064E3B),
+    background = OffWhite,
     onBackground = Color(0xFF0F172A),
+    surface = LightSurface,
     onSurface = Color(0xFF0F172A),
-    error = ErrorRed
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = LightOnSurfaceVariant,
+    surfaceContainerLow = LightSurface,
+    surfaceContainer = LightSurfaceVariant,
+    surfaceContainerHigh = Color(0xFFE2E8F0),
+    surfaceContainerHighest = Color(0xFFCBD5E1),
+    outline = LightOutline,
+    outlineVariant = LightOutline,
+    error = ErrorRed,
+    onError = Color.White,
+    errorContainer = LightErrorContainer,
+    onErrorContainer = LightOnErrorContainer,
 )
 
 @Composable
 fun SubsMateTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = false, // Disabled by default to keep brand consistency
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -63,18 +96,18 @@ fun SubsMateTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = Color.Transparent.toArgb() // Fully transparent for glassy effect
+            window.statusBarColor = Color.Transparent.toArgb()
             window.navigationBarColor = Color.Transparent.toArgb()
-            
+
             val controller = WindowCompat.getInsetsController(window, view)
-            controller.isAppearanceLightStatusBars = !darkTheme // Light icons in Dark mode, Dark icons in Light mode
+            controller.isAppearanceLightStatusBars = !darkTheme
             controller.isAppearanceLightNavigationBars = !darkTheme
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography, // Reusing existing if any, or standard
+        typography = Typography,
         content = content
     )
 }

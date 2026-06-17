@@ -5,7 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.mate.subsmate.data.local.database.AppDatabase
-import com.mate.subsmate.domain.model.BillingCycle
+import com.mate.subsmate.ui.utils.BillingUtils
 import com.mate.subsmate.ui.utils.TimeUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,7 +29,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
                 when (action) {
                     ACTION_MARK_PAID -> {
-                        val nextDate = calculateNextDate(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
+                        val nextDate = BillingUtils.calculateNextDate(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
 
                         db.paymentDao().insertPayment(
                             com.mate.subsmate.data.local.entities.PaymentHistoryEntity(
@@ -85,21 +85,6 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 pendingResult.finish()
             }
         }
-    }
-
-    private fun calculateNextDate(currentDate: Long, cycle: BillingCycle, customCycleDays: Int?): Long {
-        val calendar = Calendar.getInstance().apply { timeInMillis = currentDate }
-        val now = System.currentTimeMillis()
-        val cycleDays = customCycleDays?.coerceAtLeast(1) ?: TimeUtils.DEFAULT_CUSTOM_CYCLE_DAYS
-
-        while (calendar.timeInMillis <= now) {
-            when (cycle) {
-                BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, 1)
-                BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, 1)
-                BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, cycleDays)
-            }
-        }
-        return calendar.timeInMillis
     }
 
     companion object {

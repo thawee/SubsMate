@@ -17,7 +17,7 @@ object CategoryDefaults {
         Category(7, "Health", "fitness_center", "#4CAF50"),
         Category(8, "Lifestyle", "shopping_bag", "#FF9800"),
         Category(9, "Education", "school", "#2196F3"),
-        Category(10, "Finance", "payments", "#43A047"),
+        Category(10, "Finance", "account_balance", "#43A047"),
         Category(99, "Other", "category", "#616161")
     )
 }

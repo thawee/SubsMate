@@ -39,6 +39,8 @@ import com.mate.subsmate.ui.settings.SettingsScreen
 import com.mate.subsmate.ui.settings.SettingsViewModel
 import com.mate.subsmate.ui.subscriptions.SubscriptionsScreen
 import com.mate.subsmate.ui.subscriptions.SubscriptionsViewModel
+import com.mate.subsmate.ui.receipt_scan.ReceiptScanScreen
+import com.mate.subsmate.ui.receipt_scan.ReceiptScanViewModel
 import com.mate.subsmate.ui.theme.*
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -131,7 +133,7 @@ fun MainApp(
             // Only show bottom bar on main screens
             if (items.any { it.route == currentDestination?.route }) {
                 NavigationBar(
-                    containerColor = Color.Transparent, // Glassy Nav bar
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
                     tonalElevation = 0.dp
                 ) {
                     items.forEach { screen ->
@@ -161,10 +163,6 @@ fun MainApp(
         ) {
             composable(Screen.Dashboard.route) {
                 val viewModel = remember { DashboardViewModel(repository) }
-                // Update criteria whenever it changes in settings
-                LaunchedEffect(settingsState.dashboardDayCriteria) {
-                    viewModel.setDayCriteria(settingsState.dashboardDayCriteria)
-                }
                 LaunchedEffect(settingsState.userName) {
                     viewModel.setUserName(settingsState.userName)
                 }
@@ -197,10 +195,42 @@ fun MainApp(
             }
             composable("add_subscription") {
                 val viewModel = remember { AddSubscriptionViewModel(repository) }
+                val parentEntry = remember(it) { navController.getBackStackEntry("add_subscription") }
+                val savedStateHandle = parentEntry.savedStateHandle
+                LaunchedEffect(Unit) {
+                    savedStateHandle.getStateFlow<String>("scan_name", "").collect { name ->
+                        if (name.isNotBlank()) {
+                            viewModel.onNameChange(name)
+                            savedStateHandle["scan_name"] = ""
+                        }
+                    }
+                }
+                LaunchedEffect(Unit) {
+                    savedStateHandle.getStateFlow<String>("scan_price", "").collect { price ->
+                        if (price.isNotBlank()) {
+                            viewModel.onPriceChange(price)
+                            savedStateHandle["scan_price"] = ""
+                        }
+                    }
+                }
                 AddSubscriptionScreen(
                     viewModel = viewModel, 
                     currency = settingsState.selectedCurrency,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToReceiptScan = { navController.navigate("receipt_scan") }
+                )
+            }
+            composable("receipt_scan") {
+                ReceiptScanScreen(
+                    currency = settingsState.selectedCurrency,
+                    onNavigateBack = { navController.popBackStack() },
+                    onConfirm = { name, price ->
+                        navController.previousBackStackEntry?.savedStateHandle?.apply {
+                            set("scan_name", name)
+                            set("scan_price", price)
+                        }
+                        navController.popBackStack()
+                    }
                 )
             }
             composable("edit_subscription/{subId}") { backStackEntry ->

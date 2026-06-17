@@ -35,6 +35,12 @@ class SubscriptionRepositoryImpl(
     override suspend fun undoPayment(subscriptionId: Long) =
         paymentDao.deleteLastPaymentForSubscription(subscriptionId)
 
+    override suspend fun deleteAllPaymentsForSubscription(subscriptionId: Long) =
+        paymentDao.deleteAllPaymentsForSubscription(subscriptionId)
+
+    override suspend fun getLastPaymentForSubscription(subscriptionId: Long): PaymentHistoryEntity? =
+        paymentDao.getLastPaymentForSubscription(subscriptionId)
+
     override fun getAllPayments(): Flow<List<PaymentHistoryEntity>> =
         paymentDao.getAllPayments()
 }

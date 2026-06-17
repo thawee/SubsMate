@@ -73,6 +73,11 @@ fun DashboardScreen(
         },
         containerColor = Color.Transparent
     ) { paddingValues ->
+        if (uiState.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        } else {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -83,20 +88,10 @@ fun DashboardScreen(
             item { Spacer(modifier = Modifier.height(0.dp)) }
 
             item {
-                BudgetUsageCard(
-                    spent = uiState.monthlyTotal, 
-                    budget = uiState.monthlyBudget, 
-                    yearly = uiState.yearlyTotal,
-                    currencySymbol = currencySymbol
-                )
-            }
-
-            item {
                 QuickStatsRow(
                     activeCount = uiState.activeCount,
                     trialCount = uiState.trialCount,
                     averageCost = uiState.averageCost,
-                    mostExpensive = uiState.mostExpensive,
                     currencySymbol = currencySymbol
                 )
             }
@@ -122,11 +117,33 @@ fun DashboardScreen(
                 )
             }
 
+            item {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val filters = listOf(7 to "7d", 15 to "15d", 30 to "30d", -1 to "This Year")
+                    filters.forEach { (days, label) ->
+                        val isSelected = uiState.dayCriteria == days
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { viewModel.setDayCriteria(days) },
+                            label = { Text(label, maxLines = 1) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                selectedLabelColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
+            }
+
             if (uiState.upcomingCharges.isEmpty()) {
                 item {
                     GlassyCard(modifier = Modifier.fillMaxWidth()) {
+                        val periodText = if (uiState.dayCriteria == -1) "this year" else "next ${uiState.dayCriteria} days"
                         Text(
-                            text = "No upcoming charges in next ${uiState.dayCriteria} days.",
+                            text = "No upcoming charges $periodText.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -145,140 +162,6 @@ fun DashboardScreen(
             
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
-    }
-}
-
-@Composable
-fun BudgetUsageCard(spent: Double, budget: Double, yearly: Double, currencySymbol: String) {
-    val isDark = isSystemInDarkTheme()
-    val percentage = if (budget > 0) (spent / budget).toFloat().coerceIn(0f, 1.2f) else 0f
-    val isOverBudget = budget > 0 && spent > budget
-    val progressColor = if (isOverBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
-    val innerCardBg = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.02f)
-    val innerCardBorder = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
-
-    GlassyCard(modifier = Modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(90.dp)) {
-                    CircularProgressIndicator(
-                        progress = { percentage.coerceAtMost(1f) },
-                        modifier = Modifier.fillMaxSize(),
-                        color = progressColor,
-                        strokeWidth = 10.dp,
-                        trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
-                        strokeCap = StrokeCap.Round
-                    )
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "${(percentage * 100).toInt()}%",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = progressColor
-                        )
-                    }
-                }
-
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "Monthly Budget", 
-                        style = MaterialTheme.typography.labelLarge, 
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Text(
-                            text = "$currencySymbol${String.format("%,.2f", spent)}",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        if (budget > 0) {
-                            Text(
-                                text = " / $currencySymbol${String.format("%,.0f", budget)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
-                            )
-                        }
-                    }
-
-                    if (budget > 0) {
-                        val remaining = (budget - spent).coerceAtLeast(0.0)
-                        Surface(
-                            color = if (isOverBudget) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f) 
-                                    else MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = if (!isOverBudget) "$currencySymbol${String.format("%,.2f", remaining)} left" 
-                                       else "Over by $currencySymbol${String.format("%,.2f", spent - budget)}",
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isOverBudget) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        }
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Monthly Card
-                Surface(
-                    modifier = Modifier.weight(1f),
-                    color = innerCardBg,
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, innerCardBorder)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Monthly Total", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol${String.format("%,.2f", spent)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    }
-                }
-                // Yearly Card
-                Surface(
-                    modifier = Modifier.weight(1f),
-                    color = innerCardBg,
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, innerCardBorder)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("Yearly Estimate", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("$currencySymbol${String.format("%,.2f", yearly)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-
-            if (isOverBudget) {
-                HorizontalDivider(color = innerCardBorder, modifier = Modifier.padding(vertical = 4.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Warning",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "Alert: You have exceeded your monthly budget by $currencySymbol${String.format("%,.2f", spent - budget)}! Consider cancelling unused subscriptions.",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
         }
     }
 }
@@ -345,7 +228,6 @@ fun QuickStatsRow(
     activeCount: Int,
     trialCount: Int,
     averageCost: Double,
-    mostExpensive: com.mate.subsmate.data.local.entities.SubscriptionEntity?,
     currencySymbol: String
 ) {
     val isDark = isSystemInDarkTheme()
@@ -377,14 +259,6 @@ fun QuickStatsRow(
             value = "$currencySymbol${String.format("%,.0f", averageCost)}",
             cardBg = cardBg,
             borderColor = borderColor
-        )
-        StatCard(
-            modifier = Modifier.weight(1f),
-            label = "Top",
-            value = mostExpensive?.let { "$currencySymbol${String.format("%,.0f", it.price)}" } ?: "-",
-            cardBg = cardBg,
-            borderColor = borderColor,
-            subtitle = mostExpensive?.name
         )
     }
 }
@@ -483,7 +357,7 @@ fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = barColor,
-                                fontSize = 9.sp
+                                fontSize = 11.sp
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Box(
@@ -516,202 +390,166 @@ fun SubscriptionItem(
     onUndoPayment: () -> Unit = {}
 ) {
     val sub = model.sub
-    val daysRemaining = VendorUtils.getDaysRemaining(sub.nextBillingDate)
+    val chargeDate = model.projectedDate ?: sub.nextBillingDate
+    val daysRemaining = VendorUtils.getDaysRemaining(chargeDate)
     val logo = VendorUtils.getLogo(sub.name)
-    val isDue = sub.nextBillingDate <= System.currentTimeMillis()
+    val isDue = chargeDate <= System.currentTimeMillis()
     val isDark = isSystemInDarkTheme()
+    val dateFormatter = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+    val isLoan = sub.totalInstallments != null
 
     val cardBg = if (isDark) GlassNavy.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.85f)
     val borderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f)
 
     Surface(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)),
-        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
         color = cardBg,
         border = BorderStroke(1.dp, borderColor),
         tonalElevation = 0.dp,
         shadowElevation = if (isDark) 0.dp else 2.dp
     ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)).copy(alpha = 0.15f) } 
-                        ?: MaterialTheme.colorScheme.primaryContainer
-                    ),
-                contentAlignment = Alignment.Center
+            // Main row: Logo | Name + Date | Price
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                if (logo != null) {
-                    AsyncImage(
-                        model = logo,
-                        contentDescription = sub.name,
-                        modifier = Modifier.size(32.dp).clip(CircleShape),
-                        contentScale = ContentScale.Fit
+                // Logo
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)).copy(alpha = 0.15f) } 
+                            ?: MaterialTheme.colorScheme.primaryContainer
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (logo != null) {
+                        AsyncImage(
+                            model = logo,
+                            contentDescription = sub.name,
+                            modifier = Modifier.size(28.dp).clip(CircleShape),
+                            contentScale = ContentScale.Fit
+                        )
+                    } else {
+                        Icon(
+                            imageVector = IconUtils.getIconByName(sub.iconResId ?: "category"),
+                            contentDescription = sub.name,
+                            tint = sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                // Name + Date
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = sub.name, 
+                        fontWeight = FontWeight.Bold, 
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1
                     )
-                } else {
-                    Icon(
-                        imageVector = IconUtils.getIconByName(sub.iconResId ?: "category"),
-                        contentDescription = sub.name,
-                        tint = sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
+                    val statusColor = when {
+                        daysRemaining == 0L -> MaterialTheme.colorScheme.error
+                        daysRemaining <= 3 -> WarningOrange
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    }
+                    val statusText = if (model.projectedDate != null) {
+                        dateFormatter.format(Date(chargeDate))
+                    } else if (daysRemaining == 0L) {
+                        "Due Today"
+                    } else {
+                        "In $daysRemaining days"
+                    }
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = statusColor
                     )
+                }
+
+                // Price + Action
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "$currencySymbol${String.format("%,.2f", sub.price)}",
+                        fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    // Action indicator
+                    if (model.isRecentlyPaid) {
+                        Surface(
+                            onClick = onUndoPayment,
+                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(8.dp),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Icon(Icons.Default.Check, contentDescription = "Undo", modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.tertiary)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("PAID", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    } else if (isDue && sub.paymentType == PaymentType.MANUAL) {
+                        Surface(
+                            onClick = onMarkAsPaid,
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Check, contentDescription = "Mark Paid", modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                            }
+                        }
+                    }
                 }
             }
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = sub.name, 
-                    fontWeight = FontWeight.Bold, 
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1
+            // Loan summary — compact single line
+            if (isLoan && sub.totalLoanAmount != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = borderColor)
+                Spacer(modifier = Modifier.height(10.dp))
+                val displayInstallment = model.projectedInstallment ?: sub.currentInstallment
+                val remaining = sub.totalInstallments - displayInstallment
+                val balance = model.projectedBalance ?: LoanUtils.calculateRemainingBalance(
+                    initialPrincipal = sub.totalLoanAmount,
+                    monthlyPayment = sub.price,
+                    annualInterestRate = sub.interestRate,
+                    installmentsPaid = sub.currentInstallment,
+                    extraPrincipalPaid = sub.extraPrincipalPaid
                 )
-                val statusColor = when {
-                    daysRemaining == 0L -> MaterialTheme.colorScheme.error
-                    daysRemaining <= 3 -> WarningOrange
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                }
-                Text(
-                    text = if (daysRemaining == 0L) "Due Today" else "In $daysRemaining days",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = statusColor
-                )
-
-                if (sub.totalInstallments != null) {
-                    val progress = (sub.currentInstallment.toFloat() / sub.totalInstallments).coerceIn(0f, 1f)
+                val progress = (displayInstallment.toFloat() / sub.totalInstallments).coerceIn(0f, 1f)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "Payment ${sub.currentInstallment} / ${sub.totalInstallments} (${sub.totalInstallments - sub.currentInstallment} left)",
+                        text = "$displayInstallment/${sub.totalInstallments} ($remaining left)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).height(4.dp).clip(RoundedCornerShape(2.dp)),
-                        color = sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-                    )
-                    if (sub.totalLoanAmount != null) {
-                        val balance = LoanUtils.calculateRemainingBalance(
-                            initialPrincipal = sub.totalLoanAmount,
-                            monthlyPayment = sub.price,
-                            annualInterestRate = sub.interestRate,
-                            installmentsPaid = sub.currentInstallment,
-                            extraPrincipalPaid = sub.extraPrincipalPaid
-                        )
-                        Text(
-                            text = "Est. Balance: $currencySymbol${String.format("%,.0f", balance)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        )
-                        sub.interestRate?.let { rate ->
-                            if (rate > 0.0) {
-                                val split = LoanUtils.calculateNextPaymentSplit(
-                                    initialPrincipal = sub.totalLoanAmount,
-                                    monthlyPayment = sub.price,
-                                    annualInterestRate = rate,
-                                    installmentsPaid = sub.currentInstallment,
-                                    extraPrincipalPaid = sub.extraPrincipalPaid
-                                )
-                                Text(
-                                    text = "Split - Princ: $currencySymbol${String.format("%,.0f", split.principal)} | Int: $currencySymbol${String.format("%,.0f", split.interest)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                                )
-                            }
-                        }
-                    }
-                } else {
                     Text(
-                        text = sub.billingCycle.name.lowercase().replaceFirstChar { it.uppercase() },
+                        text = "Balance: $currencySymbol${String.format("%,.0f", balance)}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Payment Action / Status Indicator
-                if (model.isRecentlyPaid) {
-                    // Paid Status - Clickable to Undo
-                    Surface(
-                        onClick = onUndoPayment,
-                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Icon(Icons.Default.Check, contentDescription = "Undo", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("PAID", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.ExtraBold)
-                        }
-                    }
-                } else if (sub.paymentType == PaymentType.MANUAL) {
-                    // Interactive M indicator (Button)
-                    Surface(
-                        onClick = onMarkAsPaid,
-                        shape = CircleShape,
-                        color = if (isDue) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
-                        modifier = Modifier.size(40.dp),
-                        shadowElevation = if (isDue) 4.dp else 0.dp
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            if (isDue) {
-                                Icon(
-                                    imageVector = Icons.Default.Check, 
-                                    contentDescription = "Mark as Paid", 
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                            } else {
-                                Text(
-                                    text = "M",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    // Auto-Pay Indicator (A)
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "A",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                        )
-                    }
-                }
-
-                val priceText = when {
-                    sub.isVariablePrice && sub.price == 0.0 -> "Variable"
-                    sub.isVariablePrice -> "Est. $currencySymbol${String.format("%,.2f", sub.price)}"
-                    else -> "$currencySymbol${String.format("%,.2f", sub.price)}"
-                }
-                Text(
-                    text = priceText,
-                    fontWeight = FontWeight.ExtraBold,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp).height(3.dp).clip(RoundedCornerShape(2.dp)),
+                    color = sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                 )
             }
         }

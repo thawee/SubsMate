@@ -11,6 +11,7 @@ import com.mate.subsmate.ui.insights.CategorySpend
 import com.mate.subsmate.ui.insights.MonthlySpend
 import com.mate.subsmate.ui.utils.CategoryUtils
 import com.mate.subsmate.ui.utils.TimeUtils
+import com.mate.subsmate.ui.utils.BillingUtils
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
@@ -18,7 +19,12 @@ import java.util.*
 data class SubscriptionChargeUiModel(
     val sub: SubscriptionEntity,
     val isRecentlyPaid: Boolean = false,
-    val lastPaymentDate: Long? = null
+    val lastPaymentDate: Long? = null,
+    val projectedDate: Long? = null,
+    val projectedInstallment: Int? = null,
+    val projectedBalance: Double? = null,
+    val projectedPrincipal: Double? = null,
+    val projectedInterest: Double? = null
 )
 
 data class DashboardUiState(
@@ -30,7 +36,7 @@ data class DashboardUiState(
     val upcomingCharges: List<SubscriptionChargeUiModel> = emptyList(),
     val categoryBreakdown: List<CategorySpend> = emptyList(),
     val isLoading: Boolean = true,
-    val dayCriteria: Int = 14,
+    val dayCriteria: Int = 30,
     val activeCount: Int = 0,
     val trialCount: Int = 0,
     val averageCost: Double = 0.0,
@@ -42,7 +48,7 @@ class DashboardViewModel(
     private val repository: SubscriptionRepository
 ) : ViewModel() {
 
-    private val _dayCriteria = MutableStateFlow(14)
+    private val _dayCriteria = MutableStateFlow(30)
     private val _userName = MutableStateFlow("User")
     private val _monthlyBudget = MutableStateFlow(0.0)
     private val _paidVisibilityDays = MutableStateFlow(1)
@@ -73,30 +79,104 @@ class DashboardViewModel(
             set(Calendar.MILLISECOND, 0)
         }
         val todayStart = calendar.timeInMillis
-        val limit = now + (days * TimeUtils.MILLIS_PER_DAY)
+        val limit = if (days == -1) {
+            // "This Year" — end of current year
+            Calendar.getInstance().apply {
+                set(Calendar.MONTH, Calendar.DECEMBER)
+                set(Calendar.DAY_OF_MONTH, 31)
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+            }.timeInMillis
+        } else {
+            now + (days * TimeUtils.MILLIS_PER_DAY)
+        }
         val total = monthlyTotal ?: 0.0
 
         // Visibility window for recently paid items
         val visibilityThreshold = todayStart - (visibilityDays * TimeUtils.MILLIS_PER_DAY)
 
-        val chargeModels = subs.map { sub ->
-            val recentPayment = allPayments.find { 
-                it.subscriptionId == sub.id && it.paymentDate >= visibilityThreshold 
-            }
-            SubscriptionChargeUiModel(
-                sub = sub,
-                isRecentlyPaid = recentPayment != null,
-                lastPaymentDate = recentPayment?.paymentDate
-            )
-        }.filter { model ->
-            // Include if:
-            // 1. It is overdue (nextBillingDate < todayStart)
-            // 2. It is due within the window (nextBillingDate <= limit)
-            // 3. It was recently paid (so the user sees the confirmation)
-            val isOverdue = model.sub.nextBillingDate < todayStart
-            val isDueSoon = model.sub.nextBillingDate <= limit
-            isOverdue || isDueSoon || model.isRecentlyPaid
-        }.sortedBy { it.sub.nextBillingDate }
+        val chargeModels = if (days == -1) {
+            // "This Year" — generate all projected charges for each subscription
+            subs.flatMap { sub ->
+                val recentPayment = allPayments.find {
+                    it.subscriptionId == sub.id && it.paymentDate >= visibilityThreshold
+                }
+                val isRecentlyPaid = recentPayment != null
+
+                if (!sub.isActive && !isRecentlyPaid) return@flatMap emptyList()
+
+                // Generate all charge dates from now until end of year
+                val charges = mutableListOf<SubscriptionChargeUiModel>()
+                var chargeDate = sub.nextBillingDate
+                val yearEnd = limit
+
+                // Include overdue
+                if (chargeDate < todayStart) {
+                    charges.add(SubscriptionChargeUiModel(sub = sub, isRecentlyPaid = isRecentlyPaid, lastPaymentDate = recentPayment?.paymentDate, projectedDate = chargeDate))
+                }
+
+                // Generate future charges within this year
+                var monthOffset = 0
+                while (chargeDate <= yearEnd) {
+                    if (chargeDate >= todayStart) {
+                        if (sub.totalInstallments != null && sub.totalLoanAmount != null) {
+                            // Loan — calculate projected state at this month
+                            val projectedInstallment = sub.currentInstallment + monthOffset
+                            val projectedBalance = com.mate.subsmate.ui.utils.LoanUtils.calculateRemainingBalance(
+                                initialPrincipal = sub.totalLoanAmount,
+                                monthlyPayment = sub.price,
+                                annualInterestRate = sub.interestRate,
+                                installmentsPaid = projectedInstallment,
+                                extraPrincipalPaid = sub.extraPrincipalPaid
+                            )
+                            val split = com.mate.subsmate.ui.utils.LoanUtils.calculateNextPaymentSplit(
+                                initialPrincipal = sub.totalLoanAmount,
+                                monthlyPayment = sub.price,
+                                annualInterestRate = sub.interestRate,
+                                installmentsPaid = projectedInstallment,
+                                extraPrincipalPaid = sub.extraPrincipalPaid
+                            )
+                            charges.add(SubscriptionChargeUiModel(
+                                sub = sub,
+                                projectedDate = chargeDate,
+                                projectedInstallment = projectedInstallment + 1,
+                                projectedBalance = projectedBalance,
+                                projectedPrincipal = split.principal,
+                                projectedInterest = split.interest
+                            ))
+                        } else {
+                            charges.add(SubscriptionChargeUiModel(sub = sub, projectedDate = chargeDate))
+                        }
+                    }
+                    chargeDate = BillingUtils.advanceByOneCycle(chargeDate, sub.billingCycle, sub.customCycleDays)
+                    monthOffset++
+                }
+
+                // If recently paid but no future charges this year, show it once
+                if (isRecentlyPaid && charges.isEmpty()) {
+                    charges.add(SubscriptionChargeUiModel(sub = sub, isRecentlyPaid = true, lastPaymentDate = recentPayment?.paymentDate))
+                }
+
+                charges
+            }.sortedBy { it.projectedDate ?: it.sub.nextBillingDate }
+        } else {
+            // Normal day-based filter
+            subs.map { sub ->
+                val recentPayment = allPayments.find {
+                    it.subscriptionId == sub.id && it.paymentDate >= visibilityThreshold
+                }
+                SubscriptionChargeUiModel(
+                    sub = sub,
+                    isRecentlyPaid = recentPayment != null,
+                    lastPaymentDate = recentPayment?.paymentDate
+                )
+            }.filter { model ->
+                val isOverdue = model.sub.nextBillingDate < todayStart
+                val isDueSoon = model.sub.nextBillingDate <= limit
+                isOverdue || isDueSoon || model.isRecentlyPaid
+            }.sortedBy { it.sub.nextBillingDate }
+        }
 
         DashboardUiState(
             userName = name,
@@ -140,7 +220,7 @@ class DashboardViewModel(
     fun undoPayment(sub: SubscriptionEntity) {
         viewModelScope.launch {
             val current = repository.getSubscriptionById(sub.id).firstOrNull() ?: sub
-            val previousDate = revertNextDate(current.nextBillingDate, current.billingCycle, current.customCycleDays)
+            val previousDate = BillingUtils.revertNextDate(current.nextBillingDate, current.billingCycle, current.customCycleDays)
             repository.undoPayment(current.id)
             val isLoanCompleted = current.totalInstallments != null && (current.currentInstallment - 1) >= current.totalInstallments
             val updatedSub = current.copy(
@@ -152,22 +232,11 @@ class DashboardViewModel(
         }
     }
 
-    private fun revertNextDate(currentDate: Long, cycle: BillingCycle, customCycleDays: Int? = null): Long {
-        val calendar = Calendar.getInstance().apply { timeInMillis = currentDate }
-        when (cycle) {
-            BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, -1)
-            BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, -1)
-            BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, -(customCycleDays?.coerceAtLeast(1) ?: 30))
-        }
-        return calendar.timeInMillis
-    }
-
     fun markAsPaid(sub: SubscriptionEntity) {
         viewModelScope.launch {
             val current = repository.getSubscriptionById(sub.id).firstOrNull() ?: sub
-            val nextDate = calculateNextDate(current.nextBillingDate, current.billingCycle, current.customCycleDays)
+            val nextDate = BillingUtils.calculateNextDate(current.nextBillingDate, current.billingCycle, current.customCycleDays)
 
-            // Record to history before updating the next billing date
             repository.recordPayment(
                 com.mate.subsmate.data.local.entities.PaymentHistoryEntity(
                     subscriptionId = current.id,
@@ -188,30 +257,6 @@ class DashboardViewModel(
             )
             repository.updateSubscription(updatedSub)
         }
-    }
-
-
-    private fun calculateNextDate(currentDate: Long, cycle: BillingCycle, customCycleDays: Int? = null): Long {
-        val calendar = Calendar.getInstance().apply { timeInMillis = currentDate }
-        val cycleDays = customCycleDays?.coerceAtLeast(1) ?: TimeUtils.DEFAULT_CUSTOM_CYCLE_DAYS
-        when (cycle) {
-            BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, 1)
-            BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, 1)
-            BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, cycleDays)
-        }
-        
-        // If the calculated next date is STILL in the past (e.g. user missed multiple months), 
-        // keep advancing until it's in the future.
-        val now = System.currentTimeMillis()
-        while (calendar.timeInMillis < now) {
-            when (cycle) {
-                BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, 1)
-                BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, 1)
-                BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, cycleDays)
-            }
-        }
-        
-        return calendar.timeInMillis
     }
 
     private fun calculateMonthlyHistory(payments: List<PaymentHistoryEntity>): List<MonthlySpend> {

@@ -23,6 +23,7 @@ object IconUtils {
             "shopping_bag" -> Icons.Default.ShoppingBag
             "school" -> Icons.Default.School
             "payments" -> Icons.Default.Payments
+            "account_balance" -> Icons.Default.AccountBalance
             else -> Icons.Default.Category
         }
     }

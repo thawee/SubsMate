@@ -161,15 +161,40 @@ fun SubscriptionsScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Subscriptions List
-            if (uiState.filteredSubscriptions.isEmpty() && !uiState.isLoading) {
+            if (uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = if (uiState.searchQuery.isNotBlank()) "No matching subscriptions" else "No subscriptions yet.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
+                    CircularProgressIndicator()
+                }
+            } else if (uiState.filteredSubscriptions.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = if (uiState.searchQuery.isNotBlank()) "No matching subscriptions" else "No subscriptions yet",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (uiState.searchQuery.isBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Tap + to add your first subscription",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
                 }
             } else {
                 LazyColumn(
@@ -278,9 +303,10 @@ fun SubscriptionManageItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 if (subscription.totalInstallments != null) {
+                    val remainingMonths = subscription.totalInstallments - subscription.currentInstallment
                     val progress = (subscription.currentInstallment.toFloat() / subscription.totalInstallments).coerceIn(0f, 1f)
                     Text(
-                        text = "Payment ${subscription.currentInstallment} / ${subscription.totalInstallments} (${subscription.totalInstallments - subscription.currentInstallment} left)",
+                        text = "Payment ${subscription.currentInstallment} / ${subscription.totalInstallments} ($remainingMonths left)",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
@@ -298,11 +324,24 @@ fun SubscriptionManageItem(
                             installmentsPaid = subscription.currentInstallment,
                             extraPrincipalPaid = subscription.extraPrincipalPaid
                         )
+                        val insights = LoanUtils.calculateLoanInsights(
+                            remainingBalance = balance,
+                            monthlyPayment = subscription.price,
+                            annualInterestRate = subscription.interestRate,
+                            remainingMonths = remainingMonths
+                        )
                         Text(
-                            text = "Est. Balance: $currencySymbol${String.format("%,.0f", balance)}",
+                            text = "Balance: $currencySymbol${String.format("%,.0f", balance)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
+                        if (insights.totalInterest > 0) {
+                            Text(
+                                text = "Interest: $currencySymbol${String.format("%,.0f", insights.totalInterest)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                        }
                     }
                 } else {
                     Text(
@@ -325,8 +364,8 @@ fun SubscriptionManageItem(
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Row {
-                    IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+                    IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
                     }
                 }
             }

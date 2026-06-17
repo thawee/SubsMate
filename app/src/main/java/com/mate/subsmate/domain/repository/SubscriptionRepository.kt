@@ -15,5 +15,7 @@ interface SubscriptionRepository {
     // Payment History
     suspend fun recordPayment(payment: PaymentHistoryEntity)
     suspend fun undoPayment(subscriptionId: Long)
+    suspend fun deleteAllPaymentsForSubscription(subscriptionId: Long)
+    suspend fun getLastPaymentForSubscription(subscriptionId: Long): PaymentHistoryEntity?
     fun getAllPayments(): Flow<List<PaymentHistoryEntity>>
 }

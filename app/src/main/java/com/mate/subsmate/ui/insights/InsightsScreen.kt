@@ -56,14 +56,16 @@ fun InsightsScreen(viewModel: InsightsViewModel, currency: String) {
 
                 if (uiState.categoryBreakdown.isEmpty()) {
                     item {
-                        Text("Add subscriptions to see insights", color = Color.Gray)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                            Text("Add subscriptions to see insights", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 } else {
                     item {
                         Box(modifier = Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
                             DonutChart(uiState.categoryBreakdown)
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Total / Mo", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                                Text("Total / Mo", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
                                     "$currencySymbol${String.format("%.2f", uiState.totalMonthlySpend)}",
                                     style = MaterialTheme.typography.headlineSmall,
@@ -133,7 +135,7 @@ fun CategorySpendItem(spend: CategorySpend, currencySymbol: String) {
             Text(
                 "${(spend.percentage * 100).toInt()}% of total spend",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -203,7 +205,7 @@ fun MonthlySpendChart(history: List<MonthlySpend>, currencySymbol: String) {
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
-                            fontSize = 9.sp
+                            fontSize = 11.sp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Box(

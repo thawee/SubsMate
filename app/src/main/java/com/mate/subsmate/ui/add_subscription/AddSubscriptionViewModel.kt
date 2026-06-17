@@ -8,6 +8,8 @@ import com.mate.subsmate.domain.model.PaymentType
 import com.mate.subsmate.domain.model.ServiceTemplate
 import com.mate.subsmate.domain.repository.SubscriptionRepository
 import com.mate.subsmate.ui.utils.TimeUtils
+import com.mate.subsmate.ui.utils.BillingUtils
+import com.mate.subsmate.ui.utils.LoanUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +40,7 @@ data class AddSubscriptionUiState(
     val totalLoanAmount: String = "",
     val interestRate: String = "",
     val extraPrincipalPaid: String = "",
+    val extraPerMonth: String = "",
     val customCycleDays: String = "",
     val errorMessage: String? = null
 )
@@ -165,6 +168,10 @@ class AddSubscriptionViewModel(
         _uiState.update { it.copy(extraPrincipalPaid = value, errorMessage = null) }
     }
 
+    fun onExtraPerMonthChange(value: String) {
+        _uiState.update { it.copy(extraPerMonth = value, errorMessage = null) }
+    }
+
     fun onCustomCycleDaysChange(value: String) {
         _uiState.update { it.copy(customCycleDays = value, errorMessage = null) }
     }
@@ -199,10 +206,11 @@ class AddSubscriptionViewModel(
         val extraPrincipalPaidVal = if (state.isLoan) state.extraPrincipalPaid.toDoubleOrNull() ?: 0.0 else 0.0
         val customCycleDaysVal = if (state.billingCycle == BillingCycle.CUSTOM) state.customCycleDays.toIntOrNull()?.coerceAtLeast(1) else null
 
+        // For loans: require principal. Terms are optional (auto-calculated if blank).
+        val priceVal = state.price.toDoubleOrNull() ?: 0.0
         val isLoanValid = !state.isLoan || (
-            totalInstallmentsVal != null && totalInstallmentsVal > 0 &&
-            currentInstallmentVal >= 0 && currentInstallmentVal <= totalInstallmentsVal &&
             totalLoanAmountVal != null && totalLoanAmountVal > 0.0 &&
+            priceVal > 0.0 &&
             (interestRateVal == null || interestRateVal >= 0.0) &&
             extraPrincipalPaidVal >= 0.0
         )
@@ -224,14 +232,14 @@ class AddSubscriptionViewModel(
         }
 
         viewModelScope.launch {
-            // If editing, we might want to preserve lastNotifiedDate
             val existingSub = if (state.id != 0L) repository.getSubscriptionById(state.id).firstOrNull() else null
             
-            val nextBilling = if (state.isTrial && state.trialEndDate != null) {
-                state.trialEndDate
-            } else {
-                calculateNextBillingDate(state.firstBillingDate, state.billingCycle, state.customCycleDays)
-            }
+                val nextBilling = if (state.isTrial && state.trialEndDate != null) {
+                    state.trialEndDate
+                } else {
+                    val cycleDays = if (state.billingCycle == BillingCycle.CUSTOM) state.customCycleDays.toIntOrNull()?.coerceAtLeast(1) else null
+                    BillingUtils.calculateNextDate(state.firstBillingDate, state.billingCycle, cycleDays)
+                }
 
             val finalPrice = if (state.isVariablePrice) {
                 state.price.toDoubleOrNull() ?: 0.0
@@ -239,11 +247,17 @@ class AddSubscriptionViewModel(
                 state.price.toDouble()
             }
 
-            val isLoanCompleted = state.isLoan && totalInstallmentsVal != null && currentInstallmentVal >= totalInstallmentsVal
+            // Auto-calculate total installments if not provided
+            val effectiveTotalInstallments = totalInstallmentsVal
+                ?: if (state.isLoan && totalLoanAmountVal != null && priceVal > 0.0) {
+                    LoanUtils.estimateTotalInstallments(totalLoanAmountVal, priceVal, interestRateVal)
+                } else null
+
+            val isLoanCompleted = state.isLoan && effectiveTotalInstallments != null && currentInstallmentVal >= effectiveTotalInstallments
             val activeStatus = if (isLoanCompleted) {
                 false
             } else if (existingSub != null) {
-                if (state.isLoan && totalInstallmentsVal != null && currentInstallmentVal < totalInstallmentsVal) {
+                if (state.isLoan && effectiveTotalInstallments != null && currentInstallmentVal < effectiveTotalInstallments) {
                     true
                 } else {
                     existingSub.isActive
@@ -270,7 +284,7 @@ class AddSubscriptionViewModel(
                 isActive = activeStatus,
                 lastNotifiedDate = existingSub?.lastNotifiedDate,
                 isVariablePrice = state.isVariablePrice,
-                totalInstallments = totalInstallmentsVal,
+                totalInstallments = effectiveTotalInstallments,
                 currentInstallment = currentInstallmentVal,
                 totalLoanAmount = totalLoanAmountVal,
                 interestRate = interestRateVal,
@@ -278,23 +292,64 @@ class AddSubscriptionViewModel(
                 customCycleDays = customCycleDaysVal
             )
             repository.insertSubscription(entity)
+
+            // Sync payment history for loans
+            if (state.isLoan && finalPrice > 0.0) {
+                val oldInstallments = existingSub?.currentInstallment ?: 0
+                val cycleDays = if (state.billingCycle == BillingCycle.CUSTOM) state.customCycleDays.toIntOrNull()?.coerceAtLeast(1) else null
+
+                if (state.id == 0L) {
+                    // New subscription — generate all past payment records
+                    if (currentInstallmentVal > 0) {
+                        var periodStart = state.firstBillingDate
+                        for (i in 1..currentInstallmentVal) {
+                            val periodEnd = BillingUtils.calculateNextDate(periodStart, state.billingCycle, cycleDays)
+                            repository.recordPayment(
+                                com.mate.subsmate.data.local.entities.PaymentHistoryEntity(
+                                    subscriptionId = entity.id,
+                                    subscriptionName = state.name,
+                                    amount = finalPrice,
+                                    currency = currency,
+                                    paymentDate = periodEnd,
+                                    billingPeriodStart = periodStart,
+                                    billingPeriodEnd = periodEnd
+                                )
+                            )
+                            periodStart = periodEnd
+                        }
+                    }
+                } else {
+                    // Existing subscription — sync payment history delta
+                    val diff = currentInstallmentVal - oldInstallments
+                    if (diff > 0) {
+                        // Added more installments — append payment records
+                        val lastPayment = repository.getLastPaymentForSubscription(entity.id)
+                        var periodStart = lastPayment?.billingPeriodEnd ?: state.firstBillingDate
+                        for (i in 1..diff) {
+                            val periodEnd = BillingUtils.calculateNextDate(periodStart, state.billingCycle, cycleDays)
+                            repository.recordPayment(
+                                com.mate.subsmate.data.local.entities.PaymentHistoryEntity(
+                                    subscriptionId = entity.id,
+                                    subscriptionName = state.name,
+                                    amount = finalPrice,
+                                    currency = currency,
+                                    paymentDate = periodEnd,
+                                    billingPeriodStart = periodStart,
+                                    billingPeriodEnd = periodEnd
+                                )
+                            )
+                            periodStart = periodEnd
+                        }
+                    } else if (diff < 0) {
+                        // Removed installments — delete excess payment records
+                        for (i in 1..(-diff)) {
+                            repository.undoPayment(entity.id)
+                        }
+                    }
+                }
+            }
+
             _uiState.update { it.copy(isSaved = true) }
         }
-    }
-
-    private fun calculateNextBillingDate(firstDate: Long, cycle: BillingCycle, customCycleDays: String? = null): Long {
-        val now = System.currentTimeMillis()
-        if (firstDate > now) return firstDate
-
-        val cycleDays = customCycleDays?.toIntOrNull()?.coerceAtLeast(1) ?: TimeUtils.DEFAULT_CUSTOM_CYCLE_DAYS
-        val calendar = Calendar.getInstance().apply { timeInMillis = firstDate }
-        while (calendar.timeInMillis < now) {
-            when (cycle) {
-                BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, 1)
-                BillingCycle.YEARLY -> calendar.add(Calendar.YEAR, 1)
-                BillingCycle.CUSTOM -> calendar.add(Calendar.DAY_OF_YEAR, cycleDays)
-            }
-        }
-        return calendar.timeInMillis
     }
 }

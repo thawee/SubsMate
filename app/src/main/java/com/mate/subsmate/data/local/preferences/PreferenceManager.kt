@@ -49,7 +49,6 @@ class PreferenceManager(context: Context) {
         const val KEY_USER_NAME = "user_name"
         const val KEY_MONTHLY_BUDGET = "monthly_budget"
         const val KEY_CURRENCY = "currency"
-        const val KEY_DASHBOARD_DAYS = "dashboard_days"
         const val KEY_NOTIFICATIONS = "notifications"
         const val KEY_THEME = "app_theme"
         const val KEY_PAID_VISIBILITY = "paid_visibility_days"

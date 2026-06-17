@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.mate.subsmate.domain.model.BillingCycle
+import com.mate.subsmate.domain.model.CategoryDefaults
 import com.mate.subsmate.domain.model.PaymentType
 import com.mate.subsmate.domain.model.ServiceTemplate
 import com.mate.subsmate.domain.model.TemplateLibrary
@@ -42,7 +44,8 @@ import java.util.*
 fun AddSubscriptionScreen(
     viewModel: AddSubscriptionViewModel,
     currency: String,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToReceiptScan: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val currencySymbol = CurrencyUtils.getSymbol(currency)
@@ -51,15 +54,10 @@ fun AddSubscriptionScreen(
 
     val isNameValid = uiState.name.isNotBlank()
     val isPriceValid = uiState.isVariablePrice || uiState.price.toDoubleOrNull() != null
+    val loanPrice = uiState.price.toDoubleOrNull() ?: 0.0
     val isLoanValid = !uiState.isLoan || (
-        uiState.totalInstallments.toIntOrNull()?.let { total ->
-            val current = uiState.currentInstallment.toIntOrNull() ?: 0
-            val initialPrincipal = uiState.totalLoanAmount.toDoubleOrNull() ?: 0.0
-            val rate = if (uiState.interestRate.isEmpty()) 0.0 else uiState.interestRate.toDoubleOrNull()
-            val extra = if (uiState.extraPrincipalPaid.isEmpty()) 0.0 else uiState.extraPrincipalPaid.toDoubleOrNull()
-            
-            total > 0 && current >= 0 && current <= total && initialPrincipal > 0.0 && rate != null && rate >= 0.0 && extra != null && extra >= 0.0
-        } == true
+        uiState.totalLoanAmount.toDoubleOrNull()?.let { it > 0.0 } == true &&
+        loanPrice > 0.0
     )
     val isFormValid = isNameValid && isPriceValid && isLoanValid
 
@@ -175,6 +173,19 @@ fun AddSubscriptionScreen(
                 }
             }
 
+            // Scan Receipt (new subscriptions only)
+            if (uiState.id == 0L) {
+                OutlinedButton(
+                    onClick = onNavigateToReceiptScan,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Scan Receipt to Auto-Fill")
+                }
+            }
+
             // Main Details
             GlassyCard(modifier = Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -189,6 +200,48 @@ fun AddSubscriptionScreen(
                             unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
                         )
                     )
+
+                    // Category Picker
+                    Text("Category", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(CategoryDefaults.categories) { category ->
+                            val isSelected = uiState.categoryId == category.id
+                            val chipBg = if (isSelected) Color(android.graphics.Color.parseColor(category.colorHex)).copy(alpha = 0.2f)
+                                         else if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f)
+                            val chipBorder = if (isSelected) Color(android.graphics.Color.parseColor(category.colorHex))
+                                             else if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
+                            Surface(
+                                onClick = { viewModel.onCategoryChange(category.id) },
+                                shape = RoundedCornerShape(12.dp),
+                                color = chipBg,
+                                border = BorderStroke(1.dp, chipBorder)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = IconUtils.getIconByName(category.iconName),
+                                        contentDescription = category.name,
+                                        tint = if (isSelected) Color(android.graphics.Color.parseColor(category.colorHex))
+                                               else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        category.name,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) Color(android.graphics.Color.parseColor(category.colorHex))
+                                                else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -323,43 +376,7 @@ fun AddSubscriptionScreen(
                     if (uiState.isLoan) {
                         HorizontalDivider(color = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            OutlinedTextField(
-                                value = uiState.totalInstallments,
-                                onValueChange = { viewModel.onTotalInstallmentsChange(it) },
-                                label = { Text("Total Terms (Months)") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                isError = uiState.totalInstallments.isNotEmpty() && (uiState.totalInstallments.toIntOrNull() == null || uiState.totalInstallments.toIntOrNull()!! <= 0),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
-                                )
-                            )
-
-                            OutlinedTextField(
-                                value = uiState.currentInstallment,
-                                onValueChange = { viewModel.onCurrentInstallmentChange(it) },
-                                label = { Text("Already Paid Terms") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                isError = uiState.currentInstallment.isNotEmpty() && (
-                                    uiState.currentInstallment.toIntOrNull() == null || 
-                                    uiState.currentInstallment.toIntOrNull()!! < 0 || 
-                                    (uiState.totalInstallments.toIntOrNull()?.let { uiState.currentInstallment.toIntOrNull()!! > it } == true)
-                                ),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
-                                )
-                            )
-                        }
-
+                        // Principal (required) + Interest Rate
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.fillMaxWidth()
@@ -367,7 +384,7 @@ fun AddSubscriptionScreen(
                             OutlinedTextField(
                                 value = uiState.totalLoanAmount,
                                 onValueChange = { viewModel.onTotalLoanAmountChange(it) },
-                                label = { Text("Initial Principal") },
+                                label = { Text("Total Principal") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                 isError = uiState.totalLoanAmount.isNotEmpty() && (uiState.totalLoanAmount.toDoubleOrNull() == null || uiState.totalLoanAmount.toDoubleOrNull()!! <= 0.0),
                                 modifier = Modifier.weight(1f),
@@ -393,6 +410,62 @@ fun AddSubscriptionScreen(
                             )
                         }
 
+                        // Terms (optional) + Already Paid
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.totalInstallments,
+                                onValueChange = { viewModel.onTotalInstallmentsChange(it) },
+                                label = { Text("Total Terms") },
+                                supportingText = {
+                                    val principal = uiState.totalLoanAmount.toDoubleOrNull()
+                                    val price = uiState.price.toDoubleOrNull()
+                                    val rate = uiState.interestRate.toDoubleOrNull()
+                                    val estimated = if (principal != null && price != null && price > 0.0) {
+                                        com.mate.subsmate.ui.utils.LoanUtils.estimateTotalInstallments(principal, price, rate)
+                                    } else null
+                                    if (uiState.totalInstallments.isBlank() && estimated != null) {
+                                        Text("≈ $estimated months (auto)", style = MaterialTheme.typography.labelSmall)
+                                    } else {
+                                        Text("Enter your actual term count", style = MaterialTheme.typography.labelSmall)
+                                    }
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                isError = uiState.totalInstallments.isNotEmpty() && (uiState.totalInstallments.toIntOrNull() == null || uiState.totalInstallments.toIntOrNull()!! <= 0),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                                )
+                            )
+
+                            OutlinedTextField(
+                                value = uiState.currentInstallment,
+                                onValueChange = { viewModel.onCurrentInstallmentChange(it) },
+                                label = { Text("Already Paid") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                isError = uiState.currentInstallment.isNotEmpty() && (
+                                    uiState.currentInstallment.toIntOrNull() == null ||
+                                    uiState.currentInstallment.toIntOrNull()!! < 0
+                                ),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                                )
+                            )
+                        }
+
+                        Text(
+                            "Tip: Check your loan contract for the exact term count. Auto-estimate may differ due to final payment rounding.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+
                         OutlinedTextField(
                             value = uiState.extraPrincipalPaid,
                             onValueChange = { viewModel.onExtraPrincipalPaidChange(it) },
@@ -406,6 +479,55 @@ fun AddSubscriptionScreen(
                                 unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
                             )
                         )
+
+                        // Extra Payment Impact Calculator
+                        HorizontalDivider(color = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f))
+                        Text("What-if: Pay Extra Each Month", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+
+                        OutlinedTextField(
+                            value = uiState.extraPerMonth,
+                            onValueChange = { viewModel.onExtraPerMonthChange(it) },
+                            label = { Text("Extra Payment / Month ($currencySymbol)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            isError = uiState.extraPerMonth.isNotEmpty() && uiState.extraPerMonth.toDoubleOrNull() == null,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = if (isDark) Color.White.copy(alpha = 0.2f) else Color.Black.copy(alpha = 0.1f)
+                            )
+                        )
+
+                        uiState.extraPerMonth.toDoubleOrNull()?.let { extra ->
+                            if (extra > 0.0) {
+                                val principal = uiState.totalLoanAmount.toDoubleOrNull() ?: return@let
+                                val price = uiState.price.toDoubleOrNull() ?: return@let
+                                val rate = uiState.interestRate.toDoubleOrNull()
+                                val total = uiState.totalInstallments.toIntOrNull()
+                                    ?: com.mate.subsmate.ui.utils.LoanUtils.estimateTotalInstallments(principal, price, rate)
+                                    ?: return@let
+                                val remaining = total - (uiState.currentInstallment.toIntOrNull() ?: 0)
+                                if (remaining <= 0) return@let
+
+                                val impact = com.mate.subsmate.ui.utils.LoanUtils.calculateExtraPaymentImpact(
+                                    remainingBalance = principal,
+                                    monthlyPayment = price,
+                                    annualInterestRate = rate,
+                                    extraPerMonth = extra,
+                                    remainingMonths = remaining
+                                )
+                                Surface(
+                                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text("Save $currencySymbol${String.format("%,.0f", impact.interestSaved)} interest", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary)
+                                        Text("Finish ${impact.monthsSaved} months earlier", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("New payoff: ${impact.newPayoffMonths} months", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -523,7 +645,7 @@ fun TemplateItem(template: ServiceTemplate, onClick: () -> Unit) {
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(12.dp).width(70.dp)
+            modifier = Modifier.padding(12.dp).widthIn(min = 64.dp, max = 80.dp)
         ) {
             Box(
                 modifier = Modifier
