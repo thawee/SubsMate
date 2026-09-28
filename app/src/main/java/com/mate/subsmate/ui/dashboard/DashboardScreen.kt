@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,11 +14,18 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.filled.Add
+
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -118,12 +126,12 @@ fun DashboardScreen(
             }
 
             item {
-                Row(
+                LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val filters = listOf(7 to "7d", 15 to "15d", 30 to "30d", -1 to "This Year")
-                    filters.forEach { (days, label) ->
+                    items(filters) { (days, label) ->
                         val isSelected = uiState.dayCriteria == days
                         FilterChip(
                             selected = isSelected,
@@ -140,22 +148,22 @@ fun DashboardScreen(
 
             if (uiState.upcomingCharges.isEmpty()) {
                 item {
-                    GlassyCard(modifier = Modifier.fillMaxWidth()) {
-                        val periodText = if (uiState.dayCriteria == -1) "this year" else "next ${uiState.dayCriteria} days"
-                        Text(
-                            text = "No upcoming charges $periodText.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    val periodText = if (uiState.dayCriteria == -1) "this year" else "next ${uiState.dayCriteria} days"
+                    com.mate.subsmate.ui.components.EmptyStateView(
+                        icon = Icons.Default.Add,
+                        title = "All Caught Up!",
+                        subtitle = "No upcoming charges $periodText.",
+                        modifier = Modifier.fillMaxWidth().animateItem()
+                    )
                 }
             } else {
-                items(uiState.upcomingCharges) { model ->
+                items(uiState.upcomingCharges, key = { it.sub.id }) { model ->
                     SubscriptionItem(
                         model = model, 
                         currencySymbol = currencySymbol,
                         onMarkAsPaid = { viewModel.markAsPaid(model.sub) },
-                        onUndoPayment = { viewModel.undoPayment(model.sub) }
+                        onUndoPayment = { viewModel.undoPayment(model.sub) },
+                        modifier = Modifier.animateItem()
                     )
                 }
             }
@@ -322,6 +330,15 @@ fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
         }
     }
 
+    val barProgress = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+    
+    androidx.compose.runtime.LaunchedEffect(history) {
+        barProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.tween(durationMillis = 800, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+        )
+    }
+
     GlassyCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
@@ -338,12 +355,18 @@ fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
                 color = Color.Transparent
             ) {
                 Row(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics {
+                            val maxMonth = history.maxByOrNull { it.amount }
+                            contentDescription = "Bar chart showing spending trend. Highest spending was in ${maxMonth?.monthName ?: ""} with $currencySymbol${maxMonth?.amount ?: 0}."
+                        },
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.Bottom
                 ) {
                     history.forEach { spend ->
                         val proportion = (spend.amount / maxAmount).toFloat().coerceIn(0.05f, 1f)
+                        val animatedProportion = proportion * barProgress.value
 
                         Column(
                             modifier = Modifier
@@ -363,7 +386,7 @@ fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .fillMaxHeight(proportion * 0.8f)
+                                    .fillMaxHeight(animatedProportion * 0.8f)
                                     .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
                                     .background(barColor)
                             )
@@ -386,6 +409,7 @@ fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
 fun SubscriptionItem(
     model: SubscriptionChargeUiModel, 
     currencySymbol: String,
+    modifier: Modifier = Modifier,
     onMarkAsPaid: () -> Unit = {},
     onUndoPayment: () -> Unit = {}
 ) {
@@ -398,11 +422,15 @@ fun SubscriptionItem(
     val dateFormatter = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
     val isLoan = sub.totalInstallments != null
 
+    val isBuggyDefault = sub.iconResId == "category" && sub.colorHex == "#6200EE" && sub.categoryId != 99
+    val displayIconResId = if (isBuggyDefault) com.mate.subsmate.domain.model.CategoryDefaults.categories.find { it.id == sub.categoryId }?.iconName ?: sub.iconResId else sub.iconResId
+    val displayColorHex = if (isBuggyDefault) com.mate.subsmate.domain.model.CategoryDefaults.categories.find { it.id == sub.categoryId }?.colorHex ?: sub.colorHex else sub.colorHex
+
     val cardBg = if (isDark) GlassNavy.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.85f)
     val borderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f)
 
     Surface(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)),
+        modifier = modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
         color = cardBg,
         border = BorderStroke(1.dp, borderColor),
@@ -424,7 +452,7 @@ fun SubscriptionItem(
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(
-                            sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)).copy(alpha = 0.15f) } 
+                            displayColorHex?.let { Color(android.graphics.Color.parseColor(it)).copy(alpha = 0.15f) } 
                             ?: MaterialTheme.colorScheme.primaryContainer
                         ),
                     contentAlignment = Alignment.Center
@@ -438,9 +466,9 @@ fun SubscriptionItem(
                         )
                     } else {
                         Icon(
-                            imageVector = IconUtils.getIconByName(sub.iconResId ?: "category"),
+                            imageVector = IconUtils.getIconByName(displayIconResId ?: "category"),
                             contentDescription = sub.name,
-                            tint = sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
+                            tint = displayColorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -483,10 +511,15 @@ fun SubscriptionItem(
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.primary
                     )
+                    val haptic = LocalHapticFeedback.current
+                    
                     // Action indicator
                     if (model.isRecentlyPaid) {
                         Surface(
-                            onClick = onUndoPayment,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onUndoPayment()
+                            },
                             color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(8.dp),
                         ) {
@@ -501,7 +534,10 @@ fun SubscriptionItem(
                         }
                     } else if (isDue && sub.paymentType == PaymentType.MANUAL) {
                         Surface(
-                            onClick = onMarkAsPaid,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onMarkAsPaid()
+                            },
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(40.dp)
@@ -551,6 +587,31 @@ fun SubscriptionItem(
                     color = sub.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
                 )
+            }
+
+            // Credit Card summary
+            if (sub.isCreditCard && sub.currentStatementBalance != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = borderColor)
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Statement Bal: $currencySymbol${String.format("%,.2f", sub.currentStatementBalance)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    if (sub.minimumPaymentDue != null) {
+                        Text(
+                            text = "Min Due: $currencySymbol${String.format("%,.2f", sub.minimumPaymentDue)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+                }
             }
         }
     }

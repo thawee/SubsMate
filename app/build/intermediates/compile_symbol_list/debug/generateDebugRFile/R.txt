@@ -22,3 +22,4 @@ int drawable ic_vendor_youtube_premium 0x0
 int mipmap ic_launcher 0x0
 int mipmap ic_launcher_round 0x0
 int style Theme_Material3_DayNight 0x0
+int xml file_paths 0x0

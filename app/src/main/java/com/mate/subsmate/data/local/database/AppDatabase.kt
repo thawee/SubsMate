@@ -11,7 +11,7 @@ import com.mate.subsmate.data.local.entities.PaymentHistoryEntity
 
 @Database(
     entities = [SubscriptionEntity::class, CategoryEntity::class, PaymentHistoryEntity::class],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -30,7 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "subsmate-db"
                 )
-                .addMigrations(Migrations.MIGRATION_8_9, Migrations.MIGRATION_9_10)
+                .addMigrations(Migrations.MIGRATION_8_9, Migrations.MIGRATION_9_10, Migrations.MIGRATION_10_11)
                 .fallbackToDestructiveMigrationOnDowngrade()
                 .build()
                 INSTANCE = instance

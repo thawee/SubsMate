@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.mate.subsmate.BillingCycleLogicTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-06-14T16:23:31.917Z" hostname="KB-XXAXXW9TX4" time="0.006">
+  <properties/>
+  <testcase name="revertNextDate YEARLY subtracts one year" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.001"/>
+  <testcase name="revertNextDate CUSTOM with null cycle days defaults to 30" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.0"/>
+  <testcase name="revertNextDate CUSTOM subtracts specified days" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.001"/>
+  <testcase name="revertNextDate and calculateNextDate are inverse operations for MONTHLY" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.0"/>
+  <testcase name="calculateNextDate YEARLY adds one year" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.0"/>
+  <testcase name="revertNextDate and calculateNextDate are inverse operations for CUSTOM" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.001"/>
+  <testcase name="revertNextDate MONTHLY subtracts one month" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.0"/>
+  <testcase name="revertNextDate and calculateNextDate are inverse operations for YEARLY" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.0"/>
+  <testcase name="calculateNextDate MONTHLY adds one month" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.0"/>
+  <testcase name="calculateNextDate CUSTOM with null cycle days defaults to 30" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.0"/>
+  <testcase name="calculateNextDate CUSTOM adds specified days" classname="com.mate.subsmate.BillingCycleLogicTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

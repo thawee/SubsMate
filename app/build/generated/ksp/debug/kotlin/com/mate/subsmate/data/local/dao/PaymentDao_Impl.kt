@@ -31,7 +31,7 @@ public class PaymentDao_Impl(
   init {
     this.__db = __db
     this.__insertAdapterOfPaymentHistoryEntity = object : EntityInsertAdapter<PaymentHistoryEntity>() {
-      protected override fun createQuery(): String = "INSERT OR REPLACE INTO `payment_history` (`id`,`subscriptionId`,`subscriptionName`,`amount`,`currency`,`paymentDate`,`billingPeriodStart`,`billingPeriodEnd`) VALUES (nullif(?, 0),?,?,?,?,?,?,?)"
+      protected override fun createQuery(): String = "INSERT OR ABORT INTO `payment_history` (`id`,`subscriptionId`,`subscriptionName`,`amount`,`currency`,`paymentDate`,`billingPeriodStart`,`billingPeriodEnd`) VALUES (nullif(?, 0),?,?,?,?,?,?,?)"
 
       protected override fun bind(statement: SQLiteStatement, entity: PaymentHistoryEntity) {
         statement.bindLong(1, entity.id)
@@ -92,9 +92,33 @@ public class PaymentDao_Impl(
     }
   }
 
-  public override fun getPaymentsForSubscription(subId: Long): Flow<List<PaymentHistoryEntity>> {
-    val _sql: String = "SELECT * FROM payment_history WHERE subscriptionId = ? ORDER BY paymentDate DESC"
-    return createFlow(__db, false, arrayOf("payment_history")) { _connection ->
+  public override suspend fun countPaymentsForPeriod(subId: Long, periodStart: Long): Int {
+    val _sql: String = "SELECT COUNT(*) FROM payment_history WHERE subscriptionId = ? AND billingPeriodStart = ?"
+    return performSuspending(__db, true, false) { _connection ->
+      val _stmt: SQLiteStatement = _connection.prepare(_sql)
+      try {
+        var _argIndex: Int = 1
+        _stmt.bindLong(_argIndex, subId)
+        _argIndex = 2
+        _stmt.bindLong(_argIndex, periodStart)
+        val _result: Int
+        if (_stmt.step()) {
+          val _tmp: Int
+          _tmp = _stmt.getLong(0).toInt()
+          _result = _tmp
+        } else {
+          _result = 0
+        }
+        _result
+      } finally {
+        _stmt.close()
+      }
+    }
+  }
+
+  public override suspend fun getLastPaymentForSubscription(subId: Long): PaymentHistoryEntity? {
+    val _sql: String = "SELECT * FROM payment_history WHERE subscriptionId = ? ORDER BY billingPeriodEnd DESC LIMIT 1"
+    return performSuspending(__db, true, false) { _connection ->
       val _stmt: SQLiteStatement = _connection.prepare(_sql)
       try {
         var _argIndex: Int = 1
@@ -107,9 +131,8 @@ public class PaymentDao_Impl(
         val _columnIndexOfPaymentDate: Int = getColumnIndexOrThrow(_stmt, "paymentDate")
         val _columnIndexOfBillingPeriodStart: Int = getColumnIndexOrThrow(_stmt, "billingPeriodStart")
         val _columnIndexOfBillingPeriodEnd: Int = getColumnIndexOrThrow(_stmt, "billingPeriodEnd")
-        val _result: MutableList<PaymentHistoryEntity> = mutableListOf()
-        while (_stmt.step()) {
-          val _item: PaymentHistoryEntity
+        val _result: PaymentHistoryEntity?
+        if (_stmt.step()) {
           val _tmpId: Long
           _tmpId = _stmt.getLong(_columnIndexOfId)
           val _tmpSubscriptionId: Long
@@ -126,8 +149,9 @@ public class PaymentDao_Impl(
           _tmpBillingPeriodStart = _stmt.getLong(_columnIndexOfBillingPeriodStart)
           val _tmpBillingPeriodEnd: Long
           _tmpBillingPeriodEnd = _stmt.getLong(_columnIndexOfBillingPeriodEnd)
-          _item = PaymentHistoryEntity(_tmpId,_tmpSubscriptionId,_tmpSubscriptionName,_tmpAmount,_tmpCurrency,_tmpPaymentDate,_tmpBillingPeriodStart,_tmpBillingPeriodEnd)
-          _result.add(_item)
+          _result = PaymentHistoryEntity(_tmpId,_tmpSubscriptionId,_tmpSubscriptionName,_tmpAmount,_tmpCurrency,_tmpPaymentDate,_tmpBillingPeriodStart,_tmpBillingPeriodEnd)
+        } else {
+          _result = null
         }
         _result
       } finally {
@@ -138,6 +162,20 @@ public class PaymentDao_Impl(
 
   public override suspend fun deleteLastPaymentForSubscription(subId: Long) {
     val _sql: String = "DELETE FROM payment_history WHERE id = (SELECT id FROM payment_history WHERE subscriptionId = ? ORDER BY paymentDate DESC LIMIT 1)"
+    return performSuspending(__db, false, true) { _connection ->
+      val _stmt: SQLiteStatement = _connection.prepare(_sql)
+      try {
+        var _argIndex: Int = 1
+        _stmt.bindLong(_argIndex, subId)
+        _stmt.step()
+      } finally {
+        _stmt.close()
+      }
+    }
+  }
+
+  public override suspend fun deleteAllPaymentsForSubscription(subId: Long) {
+    val _sql: String = "DELETE FROM payment_history WHERE subscriptionId = ?"
     return performSuspending(__db, false, true) { _connection ->
       val _stmt: SQLiteStatement = _connection.prepare(_sql)
       try {

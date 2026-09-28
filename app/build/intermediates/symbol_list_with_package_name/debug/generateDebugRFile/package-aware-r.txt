@@ -23,3 +23,4 @@ drawable ic_vendor_youtube_premium
 mipmap ic_launcher
 mipmap ic_launcher_round
 style Theme_Material3_DayNight
+xml file_paths

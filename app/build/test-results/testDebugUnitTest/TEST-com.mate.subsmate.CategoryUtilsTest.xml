@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.mate.subsmate.CategoryUtilsTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-06-14T16:23:31.926Z" hostname="KB-XXAXXW9TX4" time="0.011">
+  <properties/>
+  <testcase name="calculateCategoryBreakdown resolves category name" classname="com.mate.subsmate.CategoryUtilsTest" time="0.009"/>
+  <testcase name="calculateCategoryBreakdown handles CUSTOM subscription with 15 days" classname="com.mate.subsmate.CategoryUtilsTest" time="0.0"/>
+  <testcase name="calculateCategoryBreakdown merges same category" classname="com.mate.subsmate.CategoryUtilsTest" time="0.0"/>
+  <testcase name="calculateCategoryBreakdown handles YEARLY subscription" classname="com.mate.subsmate.CategoryUtilsTest" time="0.0"/>
+  <testcase name="calculateCategoryBreakdown handles mixed billing cycles" classname="com.mate.subsmate.CategoryUtilsTest" time="0.0"/>
+  <testcase name="calculateCategoryBreakdown returns empty for zero total" classname="com.mate.subsmate.CategoryUtilsTest" time="0.0"/>
+  <testcase name="calculateCategoryBreakdown handles CUSTOM subscription with 30 days" classname="com.mate.subsmate.CategoryUtilsTest" time="0.001"/>
+  <testcase name="calculateCategoryBreakdown handles MONTHLY subscription" classname="com.mate.subsmate.CategoryUtilsTest" time="0.0"/>
+  <testcase name="calculateCategoryBreakdown returns empty for negative total" classname="com.mate.subsmate.CategoryUtilsTest" time="0.0"/>
+  <testcase name="calculateCategoryBreakdown handles multiple categories" classname="com.mate.subsmate.CategoryUtilsTest" time="0.001"/>
+  <testcase name="calculateCategoryBreakdown uses Other for unknown category" classname="com.mate.subsmate.CategoryUtilsTest" time="0.0"/>
+  <testcase name="calculateCategoryBreakdown handles CUSTOM subscription with null cycle days" classname="com.mate.subsmate.CategoryUtilsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -29,7 +29,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
                 when (action) {
                     ACTION_MARK_PAID -> {
-                        val nextDate = BillingUtils.calculateNextDate(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
+                        val nextDate = BillingUtils.advanceByOneCycle(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
 
                         db.paymentDao().insertPayment(
                             com.mate.subsmate.data.local.entities.PaymentHistoryEntity(

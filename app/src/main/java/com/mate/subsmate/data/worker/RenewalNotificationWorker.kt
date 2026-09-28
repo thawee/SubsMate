@@ -30,6 +30,9 @@ class RenewalNotificationWorker(
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
 
+        val prefs = com.mate.subsmate.data.local.preferences.PreferenceManager(applicationContext)
+        val isNotificationsEnabled = prefs.getBoolean(com.mate.subsmate.data.local.preferences.PreferenceManager.KEY_NOTIFICATIONS, true)
+
         subscriptions.forEach { sub ->
             val reminderMillis = sub.reminderDaysBefore * com.mate.subsmate.ui.utils.TimeUtils.MILLIS_PER_DAY
             val windowEnd = now + reminderMillis
@@ -40,7 +43,7 @@ class RenewalNotificationWorker(
                 val existingPaymentCount = db.paymentDao().countPaymentsForPeriod(sub.id, sub.nextBillingDate)
                 if (existingPaymentCount > 0) {
                     // Payment already recorded, just advance the date without creating duplicate
-                val nextDate = BillingUtils.calculateNextDate(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
+                    val nextDate = BillingUtils.advanceByOneCycle(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
                     val isCompleted = sub.totalInstallments != null && (sub.currentInstallment + 1) >= sub.totalInstallments
                     dao.updateSubscription(sub.copy(
                         nextBillingDate = nextDate,
@@ -51,7 +54,7 @@ class RenewalNotificationWorker(
                     return@forEach
                 }
 
-                val nextDate = BillingUtils.calculateNextDate(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
+                val nextDate = BillingUtils.advanceByOneCycle(sub.nextBillingDate, sub.billingCycle, sub.customCycleDays)
                 
                 // Record payment history
                 db.paymentDao().insertPayment(
@@ -85,12 +88,14 @@ class RenewalNotificationWorker(
                         sub.isVariablePrice -> " (Est. $symbol${String.format("%.2f", sub.price)})"
                         else -> " for $symbol${String.format("%.2f", sub.price)}"
                     }
-                    showNotification(
-                        sub.id.toInt(),
-                        "Subscription Renewal",
-                        "${sub.name} is renewing soon$priceMessage",
-                        sub.id
-                    )
+                    if (isNotificationsEnabled) {
+                        showNotification(
+                            sub.id.toInt(),
+                            "Subscription Renewal",
+                            "${sub.name} is renewing soon$priceMessage",
+                            sub.id
+                        )
+                    }
                     dao.updateSubscription(sub.copy(lastNotifiedDate = now))
                 }
             }
@@ -98,12 +103,14 @@ class RenewalNotificationWorker(
             // Check for Trial End
             if (sub.isTrial && sub.trialEndDate != null && sub.trialEndDate in now..windowEnd) {
                 if (sub.lastNotifiedDate == null || sub.lastNotifiedDate < todayStart) {
-                    showNotification(
-                        sub.id.toInt() + 100000,
-                        "Trial Ending Soon",
-                        "Your trial for ${sub.name} ends in ${sub.reminderDaysBefore} days",
-                        sub.id
-                    )
+                    if (isNotificationsEnabled) {
+                        showNotification(
+                            sub.id.toInt() + 100000,
+                            "Trial Ending Soon",
+                            "Your trial for ${sub.name} ends in ${sub.reminderDaysBefore} days",
+                            sub.id
+                        )
+                    }
                     dao.updateSubscription(sub.copy(lastNotifiedDate = now))
                 }
             }
@@ -153,6 +160,15 @@ class RenewalNotificationWorker(
     }
 
     companion object {
+        fun runNow(context: Context) {
+            val request = OneTimeWorkRequestBuilder<RenewalNotificationWorker>().build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "renewal_check_immediate",
+                ExistingWorkPolicy.REPLACE,
+                request
+            )
+        }
+
         fun schedule(context: Context) {
             val request = PeriodicWorkRequestBuilder<RenewalNotificationWorker>(12, TimeUnit.HOURS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.NOT_REQUIRED).build())

@@ -4,18 +4,53 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
+
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,13 +61,13 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.mate.subsmate.data.local.entities.SubscriptionEntity
 import com.mate.subsmate.ui.theme.GlassNavy
-import com.mate.subsmate.ui.utils.VendorUtils
+import com.mate.subsmate.ui.utils.CurrencyUtils
 import com.mate.subsmate.ui.utils.IconUtils
 import com.mate.subsmate.ui.utils.LoanUtils
-import com.mate.subsmate.ui.utils.CurrencyUtils
-import com.mate.subsmate.ui.theme.GlassyCard
+import com.mate.subsmate.ui.utils.VendorUtils
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -169,42 +204,25 @@ fun SubscriptionsScreen(
                     CircularProgressIndicator()
                 }
             } else if (uiState.filteredSubscriptions.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = if (uiState.searchQuery.isNotBlank()) "No matching subscriptions" else "No subscriptions yet",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (uiState.searchQuery.isBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Tap + to add your first subscription",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                }
+                val title = if (uiState.searchQuery.isNotBlank()) "No Matches Found" else "No Subscriptions Yet"
+                val subtitle = if (uiState.searchQuery.isNotBlank()) "Try a different search term." else "Tap + to add your first subscription and start tracking."
+                val icon = if (uiState.searchQuery.isNotBlank()) Icons.Default.Search else Icons.Default.Add
+                com.mate.subsmate.ui.components.EmptyStateView(
+                    icon = icon,
+                    title = title,
+                    subtitle = subtitle,
+                    modifier = Modifier.fillMaxSize()
+                )
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 80.dp)
                 ) {
-                    items(uiState.filteredSubscriptions) { sub ->
+                    items(uiState.filteredSubscriptions, key = { it.id }) { sub ->
                         SubscriptionManageItem(
                             subscription = sub,
                             currencySymbol = currencySymbol,
+                            modifier = Modifier.animateItem(),
                             onEdit = { onNavigateToEdit(sub.id) },
                             onDelete = { subscriptionToDelete = sub }
                         )
@@ -242,6 +260,7 @@ fun SubscriptionsScreen(
 fun SubscriptionManageItem(
     subscription: SubscriptionEntity,
     currencySymbol: String,
+    modifier: Modifier = Modifier,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -252,7 +271,7 @@ fun SubscriptionManageItem(
     val borderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f)
     
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onEdit),
@@ -266,13 +285,17 @@ fun SubscriptionManageItem(
             modifier = Modifier.padding(16.dp).fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val isBuggyDefault = subscription.iconResId == "category" && subscription.colorHex == "#6200EE" && subscription.categoryId != 99
+            val displayIconResId = if (isBuggyDefault) com.mate.subsmate.domain.model.CategoryDefaults.categories.find { it.id == subscription.categoryId }?.iconName ?: subscription.iconResId else subscription.iconResId
+            val displayColorHex = if (isBuggyDefault) com.mate.subsmate.domain.model.CategoryDefaults.categories.find { it.id == subscription.categoryId }?.colorHex ?: subscription.colorHex else subscription.colorHex
+
             // Vendor Logo
             Box(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(
-                        subscription.colorHex?.let { Color(android.graphics.Color.parseColor(it)).copy(alpha = 0.15f) } 
+                        displayColorHex?.let { Color(android.graphics.Color.parseColor(it)).copy(alpha = 0.15f) } 
                         ?: MaterialTheme.colorScheme.primaryContainer
                     ),
                 contentAlignment = Alignment.Center
@@ -286,9 +309,9 @@ fun SubscriptionManageItem(
                     )
                 } else {
                     Icon(
-                        imageVector = IconUtils.getIconByName(subscription.iconResId ?: "category"),
+                        imageVector = IconUtils.getIconByName(displayIconResId ?: "category"),
                         contentDescription = subscription.name,
-                        tint = subscription.colorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
+                        tint = displayColorHex?.let { Color(android.graphics.Color.parseColor(it)) } ?: MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -342,6 +365,20 @@ fun SubscriptionManageItem(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
                         }
+                    }
+                } else if (subscription.isCreditCard) {
+                    val nextDateStr = dateFormatter.format(Date(subscription.nextBillingDate))
+                    Text(
+                        text = "Credit Card • Due: $nextDateStr",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                    if (subscription.currentStatementBalance != null) {
+                        Text(
+                            text = "Balance: $currencySymbol${String.format("%,.2f", subscription.currentStatementBalance)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
                     }
                 } else {
                     Text(

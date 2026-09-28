@@ -10,10 +10,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -46,21 +52,23 @@ fun InsightsScreen(viewModel: InsightsViewModel, currency: String) {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                item {
-                    Text(
-                        "Spending Overview",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
                 if (uiState.categoryBreakdown.isEmpty()) {
                     item {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                            Text("Add subscriptions to see insights", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        com.mate.subsmate.ui.components.EmptyStateView(
+                            icon = Icons.Default.Add,
+                            title = "No Data Yet",
+                            subtitle = "Add your first subscription to generate beautiful spending insights.",
+                            modifier = Modifier.fillParentMaxSize()
+                        )
                     }
                 } else {
+                    item {
+                        Text(
+                            "Spending Overview",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     item {
                         Box(modifier = Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
                             DonutChart(uiState.categoryBreakdown)
@@ -100,10 +108,25 @@ fun InsightsScreen(viewModel: InsightsViewModel, currency: String) {
 
 @Composable
 fun DonutChart(breakdown: List<CategorySpend>) {
-    Canvas(modifier = Modifier.size(200.dp)) {
+    val sweepProgress = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+    
+    androidx.compose.runtime.LaunchedEffect(breakdown) {
+        sweepProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.tween(durationMillis = 1000, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+        )
+    }
+
+    Canvas(
+        modifier = Modifier
+            .size(200.dp)
+            .semantics {
+                contentDescription = "Donut chart showing spending breakdown across ${breakdown.size} categories. Top category is ${breakdown.firstOrNull()?.categoryName ?: "none"}."
+            }
+    ) {
         var startAngle = -90f
         breakdown.forEach { spend ->
-            val sweepAngle = spend.percentage * 360f
+            val sweepAngle = spend.percentage * 360f * sweepProgress.value
             drawArc(
                 color = Color(android.graphics.Color.parseColor(spend.colorHex)),
                 startAngle = startAngle,
@@ -111,7 +134,7 @@ fun DonutChart(breakdown: List<CategorySpend>) {
                 useCenter = false,
                 style = Stroke(width = 40f, cap = StrokeCap.Butt)
             )
-            startAngle += sweepAngle
+            startAngle += (spend.percentage * 360f)
         }
     }
 }
@@ -166,6 +189,15 @@ fun MonthlySpendChart(history: List<MonthlySpend>, currencySymbol: String) {
         }
     }
 
+    val barProgress = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+    
+    androidx.compose.runtime.LaunchedEffect(history) {
+        barProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.tween(durationMillis = 800, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,12 +218,18 @@ fun MonthlySpendChart(history: List<MonthlySpend>, currencySymbol: String) {
             color = Color.Transparent
         ) {
             Row(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .semantics {
+                        val maxMonth = history.maxByOrNull { it.amount }
+                        contentDescription = "Bar chart showing monthly spending trend for the last ${history.size} months. Highest spending was in ${maxMonth?.monthName ?: ""} with $currencySymbol${maxMonth?.amount ?: 0}."
+                    },
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
                 history.forEach { spend ->
                     val proportion = (spend.amount / maxAmount).toFloat().coerceIn(0.01f, 1f)
+                    val animatedProportion = proportion * barProgress.value
                     
                     Column(
                         modifier = Modifier
@@ -211,7 +249,7 @@ fun MonthlySpendChart(history: List<MonthlySpend>, currencySymbol: String) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight(proportion * 0.8f)
+                                .fillMaxHeight(animatedProportion * 0.8f)
                                 .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
                                 .background(barColor)
                         )

@@ -48,4 +48,38 @@ object Migrations {
             db.execSQL("ALTER TABLE payment_history_new RENAME TO payment_history")
         }
     }
+
+    val MIGRATION_10_11 = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val cursor = db.query("PRAGMA table_info(subscriptions)")
+            val existingColumns = mutableSetOf<String>()
+            cursor.use {
+                while (it.moveToNext()) {
+                    existingColumns.add(it.getString(it.getColumnIndexOrThrow("name")))
+                }
+            }
+
+            if (!existingColumns.contains("isCreditCard")) {
+                db.execSQL("ALTER TABLE subscriptions ADD COLUMN isCreditCard INTEGER NOT NULL DEFAULT 0")
+            }
+            if (!existingColumns.contains("statementDayOfMonth")) {
+                db.execSQL("ALTER TABLE subscriptions ADD COLUMN statementDayOfMonth INTEGER")
+            }
+            if (!existingColumns.contains("dueDayOfMonth")) {
+                db.execSQL("ALTER TABLE subscriptions ADD COLUMN dueDayOfMonth INTEGER")
+            }
+            if (!existingColumns.contains("creditLimit")) {
+                db.execSQL("ALTER TABLE subscriptions ADD COLUMN creditLimit REAL")
+            }
+            if (!existingColumns.contains("currentStatementBalance")) {
+                db.execSQL("ALTER TABLE subscriptions ADD COLUMN currentStatementBalance REAL")
+            }
+            if (!existingColumns.contains("minimumPaymentDue")) {
+                db.execSQL("ALTER TABLE subscriptions ADD COLUMN minimumPaymentDue REAL")
+            }
+            if (!existingColumns.contains("cardApr")) {
+                db.execSQL("ALTER TABLE subscriptions ADD COLUMN cardApr REAL")
+            }
+        }
+    }
 }

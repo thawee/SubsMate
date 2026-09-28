@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.mate.subsmate.LoanUtilsTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-06-14T16:23:31.938Z" hostname="KB-XXAXXW9TX4" time="0.001">
+  <properties/>
+  <testcase name="calculateRemainingBalance returns principal when no payments made" classname="com.mate.subsmate.LoanUtilsTest" time="0.001"/>
+  <testcase name="calculateRemainingBalance subtracts extra principal when no payments" classname="com.mate.subsmate.LoanUtilsTest" time="0.0"/>
+  <testcase name="calculateNextPaymentSplit with interest" classname="com.mate.subsmate.LoanUtilsTest" time="0.0"/>
+  <testcase name="calculateNextPaymentSplit with zero interest" classname="com.mate.subsmate.LoanUtilsTest" time="0.0"/>
+  <testcase name="calculateRemainingBalance with extra principal reduces balance faster" classname="com.mate.subsmate.LoanUtilsTest" time="0.0"/>
+  <testcase name="calculateNextPaymentSplit with null interest rate" classname="com.mate.subsmate.LoanUtilsTest" time="0.0"/>
+  <testcase name="calculateRemainingBalance does not go negative" classname="com.mate.subsmate.LoanUtilsTest" time="0.0"/>
+  <testcase name="calculateRemainingBalance with interest" classname="com.mate.subsmate.LoanUtilsTest" time="0.0"/>
+  <testcase name="calculateRemainingBalance with zero interest" classname="com.mate.subsmate.LoanUtilsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

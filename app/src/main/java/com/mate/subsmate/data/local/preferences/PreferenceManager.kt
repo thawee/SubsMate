@@ -52,5 +52,6 @@ class PreferenceManager(context: Context) {
         const val KEY_NOTIFICATIONS = "notifications"
         const val KEY_THEME = "app_theme"
         const val KEY_PAID_VISIBILITY = "paid_visibility_days"
+        const val KEY_HAS_COMPLETED_ONBOARDING = "has_completed_onboarding"
     }
 }

@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
@@ -69,6 +71,7 @@ class MainActivity : ComponentActivity() {
         val settingsViewModel = SettingsViewModel(prefManager)
         
         setContent {
+            var hasCompletedOnboarding by remember { mutableStateOf(prefManager.getBoolean(PreferenceManager.KEY_HAS_COMPLETED_ONBOARDING, false)) }
             val settingsState by settingsViewModel.uiState.collectAsState()
             val darkTheme = when (settingsState.theme) {
                 com.mate.subsmate.ui.settings.AppTheme.LIGHT -> false
@@ -101,7 +104,15 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    MainApp(repository, settingsViewModel)
+                    MainApp(
+                        repository = repository,
+                        settingsViewModel = settingsViewModel,
+                        hasCompletedOnboarding = hasCompletedOnboarding,
+                        onCompleteOnboarding = {
+                            prefManager.setBoolean(PreferenceManager.KEY_HAS_COMPLETED_ONBOARDING, true)
+                            hasCompletedOnboarding = true
+                        }
+                    )
                 }
             }
         }
@@ -118,7 +129,9 @@ sealed class Screen(val route: String, val label: String, val icon: androidx.com
 @Composable
 fun MainApp(
     repository: SubscriptionRepositoryImpl,
-    settingsViewModel: SettingsViewModel
+    settingsViewModel: SettingsViewModel,
+    hasCompletedOnboarding: Boolean,
+    onCompleteOnboarding: () -> Unit
 ) {
     val navController = rememberNavController()
     val settingsState by settingsViewModel.uiState.collectAsState()
@@ -158,9 +171,23 @@ fun MainApp(
     ) { innerPadding ->
         NavHost(
             navController = navController, 
-            startDestination = Screen.Dashboard.route,
-            modifier = Modifier.padding(innerPadding)
+            startDestination = if (hasCompletedOnboarding) Screen.Dashboard.route else "onboarding",
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) + androidx.compose.animation.slideInVertically(initialOffsetY = { 50 }, animationSpec = androidx.compose.animation.core.tween(300)) },
+            exitTransition = { androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) },
+            popEnterTransition = { androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) },
+            popExitTransition = { androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300)) + androidx.compose.animation.slideOutVertically(targetOffsetY = { 50 }, animationSpec = androidx.compose.animation.core.tween(300)) }
         ) {
+            composable("onboarding") {
+                com.mate.subsmate.ui.onboarding.OnboardingScreen(
+                    onFinish = {
+                        onCompleteOnboarding()
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo("onboarding") { inclusive = true }
+                        }
+                    }
+                )
+            }
             composable(Screen.Dashboard.route) {
                 val viewModel = remember { DashboardViewModel(repository) }
                 LaunchedEffect(settingsState.userName) {

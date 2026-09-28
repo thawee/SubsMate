@@ -235,7 +235,7 @@ class DashboardViewModel(
     fun markAsPaid(sub: SubscriptionEntity) {
         viewModelScope.launch {
             val current = repository.getSubscriptionById(sub.id).firstOrNull() ?: sub
-            val nextDate = BillingUtils.calculateNextDate(current.nextBillingDate, current.billingCycle, current.customCycleDays)
+            val nextDate = BillingUtils.advanceByOneCycle(current.nextBillingDate, current.billingCycle, current.customCycleDays)
 
             repository.recordPayment(
                 com.mate.subsmate.data.local.entities.PaymentHistoryEntity(

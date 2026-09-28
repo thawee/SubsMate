@@ -29,8 +29,8 @@ data class AddSubscriptionUiState(
     val isTrial: Boolean = false,
     val trialEndDate: Long? = null,
     val reminderDaysBefore: Int = 1,
-    val colorHex: String = "#6200EE",
-    val iconName: String = "category",
+    val colorHex: String = "#E50914",
+    val iconName: String = "play_circle",
     val isSaved: Boolean = false,
     val selectedTemplate: ServiceTemplate? = null,
     val isVariablePrice: Boolean = false,
@@ -42,7 +42,14 @@ data class AddSubscriptionUiState(
     val extraPrincipalPaid: String = "",
     val extraPerMonth: String = "",
     val customCycleDays: String = "",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isCreditCard: Boolean = false,
+    val statementDayOfMonth: String = "",
+    val dueDayOfMonth: String = "",
+    val creditLimit: String = "",
+    val currentStatementBalance: String = "",
+    val minimumPaymentDue: String = "",
+    val cardApr: String = ""
 )
 
 class AddSubscriptionViewModel(
@@ -59,6 +66,10 @@ class AddSubscriptionViewModel(
         viewModelScope.launch {
             val entity = repository.getSubscriptionById(id).firstOrNull()
             entity?.let { sub ->
+                val isBuggyDefault = sub.iconResId == "category" && sub.colorHex == "#6200EE" && sub.categoryId != 99
+                val fixedIconName = if (isBuggyDefault) com.mate.subsmate.domain.model.CategoryDefaults.categories.find { it.id == sub.categoryId }?.iconName ?: sub.iconResId else sub.iconResId
+                val fixedColorHex = if (isBuggyDefault) com.mate.subsmate.domain.model.CategoryDefaults.categories.find { it.id == sub.categoryId }?.colorHex ?: sub.colorHex else sub.colorHex
+
                 _uiState.update {
                     it.copy(
                         id = sub.id,
@@ -71,8 +82,8 @@ class AddSubscriptionViewModel(
                         isTrial = sub.isTrial,
                         trialEndDate = sub.trialEndDate,
                         reminderDaysBefore = sub.reminderDaysBefore,
-                        colorHex = sub.colorHex ?: "#6200EE",
-                        iconName = sub.iconResId ?: "category",
+                        colorHex = fixedColorHex ?: "#E50914",
+                        iconName = fixedIconName ?: "play_circle",
                         isVariablePrice = sub.isVariablePrice,
                         isLoan = sub.totalInstallments != null,
                         totalInstallments = sub.totalInstallments?.toString() ?: "",
@@ -80,7 +91,14 @@ class AddSubscriptionViewModel(
                         totalLoanAmount = sub.totalLoanAmount?.toString() ?: "",
                         interestRate = sub.interestRate?.toString() ?: "",
                         extraPrincipalPaid = if (sub.extraPrincipalPaid == 0.0) "" else sub.extraPrincipalPaid.toString(),
-                        customCycleDays = sub.customCycleDays?.toString() ?: ""
+                        customCycleDays = sub.customCycleDays?.toString() ?: "",
+                        isCreditCard = sub.isCreditCard,
+                        statementDayOfMonth = sub.statementDayOfMonth?.toString() ?: "",
+                        dueDayOfMonth = sub.dueDayOfMonth?.toString() ?: "",
+                        creditLimit = sub.creditLimit?.toString() ?: "",
+                        currentStatementBalance = sub.currentStatementBalance?.toString() ?: "",
+                        minimumPaymentDue = sub.minimumPaymentDue?.toString() ?: "",
+                        cardApr = sub.cardApr?.toString() ?: ""
                     )
                 }
                 isLoaded = true
@@ -97,7 +115,18 @@ class AddSubscriptionViewModel(
     }
 
     fun onCategoryChange(newCategoryId: Int) {
-        _uiState.update { it.copy(categoryId = newCategoryId) }
+        _uiState.update { state ->
+            if (state.selectedTemplate == null) {
+                val category = com.mate.subsmate.domain.model.CategoryDefaults.categories.find { it.id == newCategoryId }
+                state.copy(
+                    categoryId = newCategoryId,
+                    iconName = category?.iconName ?: state.iconName,
+                    colorHex = category?.colorHex ?: state.colorHex
+                )
+            } else {
+                state.copy(categoryId = newCategoryId)
+            }
+        }
     }
 
     fun onBillingCycleChange(newCycle: BillingCycle) {
@@ -180,6 +209,34 @@ class AddSubscriptionViewModel(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
+    fun onCreditCardToggle(isCreditCard: Boolean) {
+        _uiState.update { it.copy(isCreditCard = isCreditCard) }
+    }
+
+    fun onStatementDayOfMonthChange(value: String) {
+        _uiState.update { it.copy(statementDayOfMonth = value) }
+    }
+
+    fun onDueDayOfMonthChange(value: String) {
+        _uiState.update { it.copy(dueDayOfMonth = value) }
+    }
+
+    fun onCreditLimitChange(value: String) {
+        _uiState.update { it.copy(creditLimit = value) }
+    }
+
+    fun onCurrentStatementBalanceChange(value: String) {
+        _uiState.update { it.copy(currentStatementBalance = value) }
+    }
+
+    fun onMinimumPaymentDueChange(value: String) {
+        _uiState.update { it.copy(minimumPaymentDue = value) }
+    }
+
+    fun onCardAprChange(value: String) {
+        _uiState.update { it.copy(cardApr = value) }
+    }
+
     fun onTemplateSelected(template: ServiceTemplate) {
         _uiState.update {
             val isVariable = template.monthlyPrice == null && template.yearlyPrice == null
@@ -214,6 +271,19 @@ class AddSubscriptionViewModel(
             (interestRateVal == null || interestRateVal >= 0.0) &&
             extraPrincipalPaidVal >= 0.0
         )
+
+        val statementDayVal = state.statementDayOfMonth.toIntOrNull()
+        val dueDayVal = state.dueDayOfMonth.toIntOrNull()
+        val creditLimitVal = state.creditLimit.toDoubleOrNull()
+        val currentStatementBalanceVal = state.currentStatementBalance.toDoubleOrNull()
+        val minimumPaymentDueVal = state.minimumPaymentDue.toDoubleOrNull()
+        val cardAprVal = state.cardApr.toDoubleOrNull()
+
+        val isCreditCardValid = !state.isCreditCard || (
+            statementDayVal != null && statementDayVal in 1..31 &&
+            dueDayVal != null && dueDayVal in 1..31
+        )
+
         if (state.name.isBlank()) {
             _uiState.update { it.copy(errorMessage = "Service name is required") }
             return
@@ -226,6 +296,10 @@ class AddSubscriptionViewModel(
             _uiState.update { it.copy(errorMessage = "Please check loan details") }
             return
         }
+        if (!isCreditCardValid) {
+            _uiState.update { it.copy(errorMessage = "Please enter valid statement and due days (1-31)") }
+            return
+        }
         if (state.billingCycle == BillingCycle.CUSTOM && customCycleDaysVal == null) {
             _uiState.update { it.copy(errorMessage = "Please enter valid cycle days") }
             return
@@ -234,7 +308,9 @@ class AddSubscriptionViewModel(
         viewModelScope.launch {
             val existingSub = if (state.id != 0L) repository.getSubscriptionById(state.id).firstOrNull() else null
             
-                val nextBilling = if (state.isTrial && state.trialEndDate != null) {
+                val nextBilling = if (existingSub != null) {
+                    existingSub.nextBillingDate
+                } else if (state.isTrial && state.trialEndDate != null) {
                     state.trialEndDate
                 } else {
                     val cycleDays = if (state.billingCycle == BillingCycle.CUSTOM) state.customCycleDays.toIntOrNull()?.coerceAtLeast(1) else null
@@ -289,7 +365,14 @@ class AddSubscriptionViewModel(
                 totalLoanAmount = totalLoanAmountVal,
                 interestRate = interestRateVal,
                 extraPrincipalPaid = extraPrincipalPaidVal,
-                customCycleDays = customCycleDaysVal
+                customCycleDays = customCycleDaysVal,
+                isCreditCard = state.isCreditCard,
+                statementDayOfMonth = statementDayVal,
+                dueDayOfMonth = dueDayVal,
+                creditLimit = creditLimitVal,
+                currentStatementBalance = currentStatementBalanceVal,
+                minimumPaymentDue = minimumPaymentDueVal,
+                cardApr = cardAprVal
             )
             repository.insertSubscription(entity)
 
@@ -303,7 +386,7 @@ class AddSubscriptionViewModel(
                     if (currentInstallmentVal > 0) {
                         var periodStart = state.firstBillingDate
                         for (i in 1..currentInstallmentVal) {
-                            val periodEnd = BillingUtils.calculateNextDate(periodStart, state.billingCycle, cycleDays)
+                            val periodEnd = BillingUtils.advanceByOneCycle(periodStart, state.billingCycle, cycleDays)
                             repository.recordPayment(
                                 com.mate.subsmate.data.local.entities.PaymentHistoryEntity(
                                     subscriptionId = entity.id,
@@ -326,7 +409,7 @@ class AddSubscriptionViewModel(
                         val lastPayment = repository.getLastPaymentForSubscription(entity.id)
                         var periodStart = lastPayment?.billingPeriodEnd ?: state.firstBillingDate
                         for (i in 1..diff) {
-                            val periodEnd = BillingUtils.calculateNextDate(periodStart, state.billingCycle, cycleDays)
+                            val periodEnd = BillingUtils.advanceByOneCycle(periodStart, state.billingCycle, cycleDays)
                             repository.recordPayment(
                                 com.mate.subsmate.data.local.entities.PaymentHistoryEntity(
                                     subscriptionId = entity.id,

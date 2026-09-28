@@ -40,13 +40,15 @@ public class AppDatabase_Impl : AppDatabase() {
   }
 
   protected override fun createOpenDelegate(): RoomOpenDelegate {
-    val _openDelegate: RoomOpenDelegate = object : RoomOpenDelegate(5, "2012abe9c73d0f39ed0d3cd295806f3b", "1ff7e9224b05e5be661414be05475c1e") {
+    val _openDelegate: RoomOpenDelegate = object : RoomOpenDelegate(11, "e421d3bcd0bd6d5ec3bfe4e78f3f32f8", "1b7543857fdab17a8c4e68314a97dfb4") {
       public override fun createAllTables(connection: SQLiteConnection) {
-        connection.execSQL("CREATE TABLE IF NOT EXISTS `subscriptions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `price` REAL NOT NULL, `currency` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `billingCycle` TEXT NOT NULL, `paymentType` TEXT NOT NULL, `customCycleDays` INTEGER, `firstBillingDate` INTEGER NOT NULL, `nextBillingDate` INTEGER NOT NULL, `isTrial` INTEGER NOT NULL, `trialEndDate` INTEGER, `reminderDaysBefore` INTEGER NOT NULL, `iconResId` TEXT, `colorHex` TEXT, `isActive` INTEGER NOT NULL, `notes` TEXT, `lastNotifiedDate` INTEGER)")
+        connection.execSQL("CREATE TABLE IF NOT EXISTS `subscriptions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `price` REAL NOT NULL, `currency` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `billingCycle` TEXT NOT NULL, `paymentType` TEXT NOT NULL, `customCycleDays` INTEGER, `firstBillingDate` INTEGER NOT NULL, `nextBillingDate` INTEGER NOT NULL, `isTrial` INTEGER NOT NULL, `trialEndDate` INTEGER, `reminderDaysBefore` INTEGER NOT NULL, `iconResId` TEXT, `colorHex` TEXT, `isActive` INTEGER NOT NULL, `notes` TEXT, `lastNotifiedDate` INTEGER, `isVariablePrice` INTEGER NOT NULL, `totalInstallments` INTEGER, `currentInstallment` INTEGER NOT NULL, `totalLoanAmount` REAL, `interestRate` REAL, `extraPrincipalPaid` REAL NOT NULL, `isCreditCard` INTEGER NOT NULL, `statementDayOfMonth` INTEGER, `dueDayOfMonth` INTEGER, `creditLimit` REAL, `currentStatementBalance` REAL, `minimumPaymentDue` REAL, `cardApr` REAL)")
         connection.execSQL("CREATE TABLE IF NOT EXISTS `categories` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `iconName` TEXT NOT NULL, `defaultColorHex` TEXT NOT NULL, PRIMARY KEY(`id`))")
-        connection.execSQL("CREATE TABLE IF NOT EXISTS `payment_history` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `subscriptionId` INTEGER NOT NULL, `subscriptionName` TEXT NOT NULL, `amount` REAL NOT NULL, `currency` TEXT NOT NULL, `paymentDate` INTEGER NOT NULL, `billingPeriodStart` INTEGER NOT NULL, `billingPeriodEnd` INTEGER NOT NULL)")
+        connection.execSQL("CREATE TABLE IF NOT EXISTS `payment_history` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `subscriptionId` INTEGER NOT NULL, `subscriptionName` TEXT NOT NULL, `amount` REAL NOT NULL, `currency` TEXT NOT NULL, `paymentDate` INTEGER NOT NULL, `billingPeriodStart` INTEGER NOT NULL, `billingPeriodEnd` INTEGER NOT NULL, FOREIGN KEY(`subscriptionId`) REFERENCES `subscriptions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_payment_history_subscriptionId` ON `payment_history` (`subscriptionId`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_payment_history_billingPeriodStart` ON `payment_history` (`billingPeriodStart`)")
         connection.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)")
-        connection.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2012abe9c73d0f39ed0d3cd295806f3b')")
+        connection.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e421d3bcd0bd6d5ec3bfe4e78f3f32f8')")
       }
 
       public override fun dropAllTables(connection: SQLiteConnection) {
@@ -59,6 +61,7 @@ public class AppDatabase_Impl : AppDatabase() {
       }
 
       public override fun onOpen(connection: SQLiteConnection) {
+        connection.execSQL("PRAGMA foreign_keys = ON")
         internalInitInvalidationTracker(connection)
       }
 
@@ -89,6 +92,19 @@ public class AppDatabase_Impl : AppDatabase() {
         _columnsSubscriptions.put("isActive", TableInfo.Column("isActive", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY))
         _columnsSubscriptions.put("notes", TableInfo.Column("notes", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
         _columnsSubscriptions.put("lastNotifiedDate", TableInfo.Column("lastNotifiedDate", "INTEGER", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("isVariablePrice", TableInfo.Column("isVariablePrice", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("totalInstallments", TableInfo.Column("totalInstallments", "INTEGER", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("currentInstallment", TableInfo.Column("currentInstallment", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("totalLoanAmount", TableInfo.Column("totalLoanAmount", "REAL", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("interestRate", TableInfo.Column("interestRate", "REAL", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("extraPrincipalPaid", TableInfo.Column("extraPrincipalPaid", "REAL", true, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("isCreditCard", TableInfo.Column("isCreditCard", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("statementDayOfMonth", TableInfo.Column("statementDayOfMonth", "INTEGER", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("dueDayOfMonth", TableInfo.Column("dueDayOfMonth", "INTEGER", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("creditLimit", TableInfo.Column("creditLimit", "REAL", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("currentStatementBalance", TableInfo.Column("currentStatementBalance", "REAL", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("minimumPaymentDue", TableInfo.Column("minimumPaymentDue", "REAL", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
+        _columnsSubscriptions.put("cardApr", TableInfo.Column("cardApr", "REAL", false, 0, null, TableInfo.CREATED_FROM_ENTITY))
         val _foreignKeysSubscriptions: MutableSet<TableInfo.ForeignKey> = mutableSetOf()
         val _indicesSubscriptions: MutableSet<TableInfo.Index> = mutableSetOf()
         val _infoSubscriptions: TableInfo = TableInfo("subscriptions", _columnsSubscriptions, _foreignKeysSubscriptions, _indicesSubscriptions)
@@ -130,7 +146,10 @@ public class AppDatabase_Impl : AppDatabase() {
         _columnsPaymentHistory.put("billingPeriodStart", TableInfo.Column("billingPeriodStart", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY))
         _columnsPaymentHistory.put("billingPeriodEnd", TableInfo.Column("billingPeriodEnd", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY))
         val _foreignKeysPaymentHistory: MutableSet<TableInfo.ForeignKey> = mutableSetOf()
+        _foreignKeysPaymentHistory.add(TableInfo.ForeignKey("subscriptions", "CASCADE", "NO ACTION", listOf("subscriptionId"), listOf("id")))
         val _indicesPaymentHistory: MutableSet<TableInfo.Index> = mutableSetOf()
+        _indicesPaymentHistory.add(TableInfo.Index("index_payment_history_subscriptionId", false, listOf("subscriptionId"), listOf("ASC")))
+        _indicesPaymentHistory.add(TableInfo.Index("index_payment_history_billingPeriodStart", false, listOf("billingPeriodStart"), listOf("ASC")))
         val _infoPaymentHistory: TableInfo = TableInfo("payment_history", _columnsPaymentHistory, _foreignKeysPaymentHistory, _indicesPaymentHistory)
         val _existingPaymentHistory: TableInfo = read(connection, "payment_history")
         if (!_infoPaymentHistory.equals(_existingPaymentHistory)) {
@@ -155,7 +174,7 @@ public class AppDatabase_Impl : AppDatabase() {
   }
 
   public override fun clearAllTables() {
-    super.performClear(false, "subscriptions", "categories", "payment_history")
+    super.performClear(true, "subscriptions", "categories", "payment_history")
   }
 
   protected override fun getRequiredTypeConverterClasses(): Map<KClass<*>, List<KClass<*>>> {

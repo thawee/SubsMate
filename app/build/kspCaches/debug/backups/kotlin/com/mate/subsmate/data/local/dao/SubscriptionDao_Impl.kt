@@ -14,7 +14,6 @@ import com.mate.subsmate.domain.model.PaymentType
 import javax.`annotation`.processing.Generated
 import kotlin.Boolean
 import kotlin.Double
-import kotlin.IllegalArgumentException
 import kotlin.Int
 import kotlin.Long
 import kotlin.String
@@ -43,7 +42,7 @@ public class SubscriptionDao_Impl(
   init {
     this.__db = __db
     this.__insertAdapterOfSubscriptionEntity = object : EntityInsertAdapter<SubscriptionEntity>() {
-      protected override fun createQuery(): String = "INSERT OR REPLACE INTO `subscriptions` (`id`,`name`,`price`,`currency`,`categoryId`,`billingCycle`,`paymentType`,`customCycleDays`,`firstBillingDate`,`nextBillingDate`,`isTrial`,`trialEndDate`,`reminderDaysBefore`,`iconResId`,`colorHex`,`isActive`,`notes`,`lastNotifiedDate`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+      protected override fun createQuery(): String = "INSERT OR REPLACE INTO `subscriptions` (`id`,`name`,`price`,`currency`,`categoryId`,`billingCycle`,`paymentType`,`customCycleDays`,`firstBillingDate`,`nextBillingDate`,`isTrial`,`trialEndDate`,`reminderDaysBefore`,`iconResId`,`colorHex`,`isActive`,`notes`,`lastNotifiedDate`,`isVariablePrice`,`totalInstallments`,`currentInstallment`,`totalLoanAmount`,`interestRate`,`extraPrincipalPaid`,`isCreditCard`,`statementDayOfMonth`,`dueDayOfMonth`,`creditLimit`,`currentStatementBalance`,`minimumPaymentDue`,`cardApr`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
       protected override fun bind(statement: SQLiteStatement, entity: SubscriptionEntity) {
         statement.bindLong(1, entity.id)
@@ -53,7 +52,8 @@ public class SubscriptionDao_Impl(
         statement.bindLong(5, entity.categoryId.toLong())
         val _tmp: String = __converters.fromBillingCycle(entity.billingCycle)
         statement.bindText(6, _tmp)
-        statement.bindText(7, __PaymentType_enumToString(entity.paymentType))
+        val _tmp_1: String = __converters.fromPaymentType(entity.paymentType)
+        statement.bindText(7, _tmp_1)
         val _tmpCustomCycleDays: Int? = entity.customCycleDays
         if (_tmpCustomCycleDays == null) {
           statement.bindNull(8)
@@ -62,8 +62,8 @@ public class SubscriptionDao_Impl(
         }
         statement.bindLong(9, entity.firstBillingDate)
         statement.bindLong(10, entity.nextBillingDate)
-        val _tmp_1: Int = if (entity.isTrial) 1 else 0
-        statement.bindLong(11, _tmp_1.toLong())
+        val _tmp_2: Int = if (entity.isTrial) 1 else 0
+        statement.bindLong(11, _tmp_2.toLong())
         val _tmpTrialEndDate: Long? = entity.trialEndDate
         if (_tmpTrialEndDate == null) {
           statement.bindNull(12)
@@ -83,8 +83,8 @@ public class SubscriptionDao_Impl(
         } else {
           statement.bindText(15, _tmpColorHex)
         }
-        val _tmp_2: Int = if (entity.isActive) 1 else 0
-        statement.bindLong(16, _tmp_2.toLong())
+        val _tmp_3: Int = if (entity.isActive) 1 else 0
+        statement.bindLong(16, _tmp_3.toLong())
         val _tmpNotes: String? = entity.notes
         if (_tmpNotes == null) {
           statement.bindNull(17)
@@ -96,6 +96,66 @@ public class SubscriptionDao_Impl(
           statement.bindNull(18)
         } else {
           statement.bindLong(18, _tmpLastNotifiedDate)
+        }
+        val _tmp_4: Int = if (entity.isVariablePrice) 1 else 0
+        statement.bindLong(19, _tmp_4.toLong())
+        val _tmpTotalInstallments: Int? = entity.totalInstallments
+        if (_tmpTotalInstallments == null) {
+          statement.bindNull(20)
+        } else {
+          statement.bindLong(20, _tmpTotalInstallments.toLong())
+        }
+        statement.bindLong(21, entity.currentInstallment.toLong())
+        val _tmpTotalLoanAmount: Double? = entity.totalLoanAmount
+        if (_tmpTotalLoanAmount == null) {
+          statement.bindNull(22)
+        } else {
+          statement.bindDouble(22, _tmpTotalLoanAmount)
+        }
+        val _tmpInterestRate: Double? = entity.interestRate
+        if (_tmpInterestRate == null) {
+          statement.bindNull(23)
+        } else {
+          statement.bindDouble(23, _tmpInterestRate)
+        }
+        statement.bindDouble(24, entity.extraPrincipalPaid)
+        val _tmp_5: Int = if (entity.isCreditCard) 1 else 0
+        statement.bindLong(25, _tmp_5.toLong())
+        val _tmpStatementDayOfMonth: Int? = entity.statementDayOfMonth
+        if (_tmpStatementDayOfMonth == null) {
+          statement.bindNull(26)
+        } else {
+          statement.bindLong(26, _tmpStatementDayOfMonth.toLong())
+        }
+        val _tmpDueDayOfMonth: Int? = entity.dueDayOfMonth
+        if (_tmpDueDayOfMonth == null) {
+          statement.bindNull(27)
+        } else {
+          statement.bindLong(27, _tmpDueDayOfMonth.toLong())
+        }
+        val _tmpCreditLimit: Double? = entity.creditLimit
+        if (_tmpCreditLimit == null) {
+          statement.bindNull(28)
+        } else {
+          statement.bindDouble(28, _tmpCreditLimit)
+        }
+        val _tmpCurrentStatementBalance: Double? = entity.currentStatementBalance
+        if (_tmpCurrentStatementBalance == null) {
+          statement.bindNull(29)
+        } else {
+          statement.bindDouble(29, _tmpCurrentStatementBalance)
+        }
+        val _tmpMinimumPaymentDue: Double? = entity.minimumPaymentDue
+        if (_tmpMinimumPaymentDue == null) {
+          statement.bindNull(30)
+        } else {
+          statement.bindDouble(30, _tmpMinimumPaymentDue)
+        }
+        val _tmpCardApr: Double? = entity.cardApr
+        if (_tmpCardApr == null) {
+          statement.bindNull(31)
+        } else {
+          statement.bindDouble(31, _tmpCardApr)
         }
       }
     }
@@ -107,7 +167,7 @@ public class SubscriptionDao_Impl(
       }
     }
     this.__updateAdapterOfSubscriptionEntity = object : EntityDeleteOrUpdateAdapter<SubscriptionEntity>() {
-      protected override fun createQuery(): String = "UPDATE OR ABORT `subscriptions` SET `id` = ?,`name` = ?,`price` = ?,`currency` = ?,`categoryId` = ?,`billingCycle` = ?,`paymentType` = ?,`customCycleDays` = ?,`firstBillingDate` = ?,`nextBillingDate` = ?,`isTrial` = ?,`trialEndDate` = ?,`reminderDaysBefore` = ?,`iconResId` = ?,`colorHex` = ?,`isActive` = ?,`notes` = ?,`lastNotifiedDate` = ? WHERE `id` = ?"
+      protected override fun createQuery(): String = "UPDATE OR ABORT `subscriptions` SET `id` = ?,`name` = ?,`price` = ?,`currency` = ?,`categoryId` = ?,`billingCycle` = ?,`paymentType` = ?,`customCycleDays` = ?,`firstBillingDate` = ?,`nextBillingDate` = ?,`isTrial` = ?,`trialEndDate` = ?,`reminderDaysBefore` = ?,`iconResId` = ?,`colorHex` = ?,`isActive` = ?,`notes` = ?,`lastNotifiedDate` = ?,`isVariablePrice` = ?,`totalInstallments` = ?,`currentInstallment` = ?,`totalLoanAmount` = ?,`interestRate` = ?,`extraPrincipalPaid` = ?,`isCreditCard` = ?,`statementDayOfMonth` = ?,`dueDayOfMonth` = ?,`creditLimit` = ?,`currentStatementBalance` = ?,`minimumPaymentDue` = ?,`cardApr` = ? WHERE `id` = ?"
 
       protected override fun bind(statement: SQLiteStatement, entity: SubscriptionEntity) {
         statement.bindLong(1, entity.id)
@@ -117,7 +177,8 @@ public class SubscriptionDao_Impl(
         statement.bindLong(5, entity.categoryId.toLong())
         val _tmp: String = __converters.fromBillingCycle(entity.billingCycle)
         statement.bindText(6, _tmp)
-        statement.bindText(7, __PaymentType_enumToString(entity.paymentType))
+        val _tmp_1: String = __converters.fromPaymentType(entity.paymentType)
+        statement.bindText(7, _tmp_1)
         val _tmpCustomCycleDays: Int? = entity.customCycleDays
         if (_tmpCustomCycleDays == null) {
           statement.bindNull(8)
@@ -126,8 +187,8 @@ public class SubscriptionDao_Impl(
         }
         statement.bindLong(9, entity.firstBillingDate)
         statement.bindLong(10, entity.nextBillingDate)
-        val _tmp_1: Int = if (entity.isTrial) 1 else 0
-        statement.bindLong(11, _tmp_1.toLong())
+        val _tmp_2: Int = if (entity.isTrial) 1 else 0
+        statement.bindLong(11, _tmp_2.toLong())
         val _tmpTrialEndDate: Long? = entity.trialEndDate
         if (_tmpTrialEndDate == null) {
           statement.bindNull(12)
@@ -147,8 +208,8 @@ public class SubscriptionDao_Impl(
         } else {
           statement.bindText(15, _tmpColorHex)
         }
-        val _tmp_2: Int = if (entity.isActive) 1 else 0
-        statement.bindLong(16, _tmp_2.toLong())
+        val _tmp_3: Int = if (entity.isActive) 1 else 0
+        statement.bindLong(16, _tmp_3.toLong())
         val _tmpNotes: String? = entity.notes
         if (_tmpNotes == null) {
           statement.bindNull(17)
@@ -161,7 +222,67 @@ public class SubscriptionDao_Impl(
         } else {
           statement.bindLong(18, _tmpLastNotifiedDate)
         }
-        statement.bindLong(19, entity.id)
+        val _tmp_4: Int = if (entity.isVariablePrice) 1 else 0
+        statement.bindLong(19, _tmp_4.toLong())
+        val _tmpTotalInstallments: Int? = entity.totalInstallments
+        if (_tmpTotalInstallments == null) {
+          statement.bindNull(20)
+        } else {
+          statement.bindLong(20, _tmpTotalInstallments.toLong())
+        }
+        statement.bindLong(21, entity.currentInstallment.toLong())
+        val _tmpTotalLoanAmount: Double? = entity.totalLoanAmount
+        if (_tmpTotalLoanAmount == null) {
+          statement.bindNull(22)
+        } else {
+          statement.bindDouble(22, _tmpTotalLoanAmount)
+        }
+        val _tmpInterestRate: Double? = entity.interestRate
+        if (_tmpInterestRate == null) {
+          statement.bindNull(23)
+        } else {
+          statement.bindDouble(23, _tmpInterestRate)
+        }
+        statement.bindDouble(24, entity.extraPrincipalPaid)
+        val _tmp_5: Int = if (entity.isCreditCard) 1 else 0
+        statement.bindLong(25, _tmp_5.toLong())
+        val _tmpStatementDayOfMonth: Int? = entity.statementDayOfMonth
+        if (_tmpStatementDayOfMonth == null) {
+          statement.bindNull(26)
+        } else {
+          statement.bindLong(26, _tmpStatementDayOfMonth.toLong())
+        }
+        val _tmpDueDayOfMonth: Int? = entity.dueDayOfMonth
+        if (_tmpDueDayOfMonth == null) {
+          statement.bindNull(27)
+        } else {
+          statement.bindLong(27, _tmpDueDayOfMonth.toLong())
+        }
+        val _tmpCreditLimit: Double? = entity.creditLimit
+        if (_tmpCreditLimit == null) {
+          statement.bindNull(28)
+        } else {
+          statement.bindDouble(28, _tmpCreditLimit)
+        }
+        val _tmpCurrentStatementBalance: Double? = entity.currentStatementBalance
+        if (_tmpCurrentStatementBalance == null) {
+          statement.bindNull(29)
+        } else {
+          statement.bindDouble(29, _tmpCurrentStatementBalance)
+        }
+        val _tmpMinimumPaymentDue: Double? = entity.minimumPaymentDue
+        if (_tmpMinimumPaymentDue == null) {
+          statement.bindNull(30)
+        } else {
+          statement.bindDouble(30, _tmpMinimumPaymentDue)
+        }
+        val _tmpCardApr: Double? = entity.cardApr
+        if (_tmpCardApr == null) {
+          statement.bindNull(31)
+        } else {
+          statement.bindDouble(31, _tmpCardApr)
+        }
+        statement.bindLong(32, entity.id)
       }
     }
   }
@@ -201,6 +322,19 @@ public class SubscriptionDao_Impl(
         val _columnIndexOfIsActive: Int = getColumnIndexOrThrow(_stmt, "isActive")
         val _columnIndexOfNotes: Int = getColumnIndexOrThrow(_stmt, "notes")
         val _columnIndexOfLastNotifiedDate: Int = getColumnIndexOrThrow(_stmt, "lastNotifiedDate")
+        val _columnIndexOfIsVariablePrice: Int = getColumnIndexOrThrow(_stmt, "isVariablePrice")
+        val _columnIndexOfTotalInstallments: Int = getColumnIndexOrThrow(_stmt, "totalInstallments")
+        val _columnIndexOfCurrentInstallment: Int = getColumnIndexOrThrow(_stmt, "currentInstallment")
+        val _columnIndexOfTotalLoanAmount: Int = getColumnIndexOrThrow(_stmt, "totalLoanAmount")
+        val _columnIndexOfInterestRate: Int = getColumnIndexOrThrow(_stmt, "interestRate")
+        val _columnIndexOfExtraPrincipalPaid: Int = getColumnIndexOrThrow(_stmt, "extraPrincipalPaid")
+        val _columnIndexOfIsCreditCard: Int = getColumnIndexOrThrow(_stmt, "isCreditCard")
+        val _columnIndexOfStatementDayOfMonth: Int = getColumnIndexOrThrow(_stmt, "statementDayOfMonth")
+        val _columnIndexOfDueDayOfMonth: Int = getColumnIndexOrThrow(_stmt, "dueDayOfMonth")
+        val _columnIndexOfCreditLimit: Int = getColumnIndexOrThrow(_stmt, "creditLimit")
+        val _columnIndexOfCurrentStatementBalance: Int = getColumnIndexOrThrow(_stmt, "currentStatementBalance")
+        val _columnIndexOfMinimumPaymentDue: Int = getColumnIndexOrThrow(_stmt, "minimumPaymentDue")
+        val _columnIndexOfCardApr: Int = getColumnIndexOrThrow(_stmt, "cardApr")
         val _result: MutableList<SubscriptionEntity> = mutableListOf()
         while (_stmt.step()) {
           val _item: SubscriptionEntity
@@ -219,7 +353,9 @@ public class SubscriptionDao_Impl(
           _tmp = _stmt.getText(_columnIndexOfBillingCycle)
           _tmpBillingCycle = __converters.toBillingCycle(_tmp)
           val _tmpPaymentType: PaymentType
-          _tmpPaymentType = __PaymentType_stringToEnum(_stmt.getText(_columnIndexOfPaymentType))
+          val _tmp_1: String
+          _tmp_1 = _stmt.getText(_columnIndexOfPaymentType)
+          _tmpPaymentType = __converters.toPaymentType(_tmp_1)
           val _tmpCustomCycleDays: Int?
           if (_stmt.isNull(_columnIndexOfCustomCycleDays)) {
             _tmpCustomCycleDays = null
@@ -231,9 +367,9 @@ public class SubscriptionDao_Impl(
           val _tmpNextBillingDate: Long
           _tmpNextBillingDate = _stmt.getLong(_columnIndexOfNextBillingDate)
           val _tmpIsTrial: Boolean
-          val _tmp_1: Int
-          _tmp_1 = _stmt.getLong(_columnIndexOfIsTrial).toInt()
-          _tmpIsTrial = _tmp_1 != 0
+          val _tmp_2: Int
+          _tmp_2 = _stmt.getLong(_columnIndexOfIsTrial).toInt()
+          _tmpIsTrial = _tmp_2 != 0
           val _tmpTrialEndDate: Long?
           if (_stmt.isNull(_columnIndexOfTrialEndDate)) {
             _tmpTrialEndDate = null
@@ -255,9 +391,9 @@ public class SubscriptionDao_Impl(
             _tmpColorHex = _stmt.getText(_columnIndexOfColorHex)
           }
           val _tmpIsActive: Boolean
-          val _tmp_2: Int
-          _tmp_2 = _stmt.getLong(_columnIndexOfIsActive).toInt()
-          _tmpIsActive = _tmp_2 != 0
+          val _tmp_3: Int
+          _tmp_3 = _stmt.getLong(_columnIndexOfIsActive).toInt()
+          _tmpIsActive = _tmp_3 != 0
           val _tmpNotes: String?
           if (_stmt.isNull(_columnIndexOfNotes)) {
             _tmpNotes = null
@@ -270,7 +406,73 @@ public class SubscriptionDao_Impl(
           } else {
             _tmpLastNotifiedDate = _stmt.getLong(_columnIndexOfLastNotifiedDate)
           }
-          _item = SubscriptionEntity(_tmpId,_tmpName,_tmpPrice,_tmpCurrency,_tmpCategoryId,_tmpBillingCycle,_tmpPaymentType,_tmpCustomCycleDays,_tmpFirstBillingDate,_tmpNextBillingDate,_tmpIsTrial,_tmpTrialEndDate,_tmpReminderDaysBefore,_tmpIconResId,_tmpColorHex,_tmpIsActive,_tmpNotes,_tmpLastNotifiedDate)
+          val _tmpIsVariablePrice: Boolean
+          val _tmp_4: Int
+          _tmp_4 = _stmt.getLong(_columnIndexOfIsVariablePrice).toInt()
+          _tmpIsVariablePrice = _tmp_4 != 0
+          val _tmpTotalInstallments: Int?
+          if (_stmt.isNull(_columnIndexOfTotalInstallments)) {
+            _tmpTotalInstallments = null
+          } else {
+            _tmpTotalInstallments = _stmt.getLong(_columnIndexOfTotalInstallments).toInt()
+          }
+          val _tmpCurrentInstallment: Int
+          _tmpCurrentInstallment = _stmt.getLong(_columnIndexOfCurrentInstallment).toInt()
+          val _tmpTotalLoanAmount: Double?
+          if (_stmt.isNull(_columnIndexOfTotalLoanAmount)) {
+            _tmpTotalLoanAmount = null
+          } else {
+            _tmpTotalLoanAmount = _stmt.getDouble(_columnIndexOfTotalLoanAmount)
+          }
+          val _tmpInterestRate: Double?
+          if (_stmt.isNull(_columnIndexOfInterestRate)) {
+            _tmpInterestRate = null
+          } else {
+            _tmpInterestRate = _stmt.getDouble(_columnIndexOfInterestRate)
+          }
+          val _tmpExtraPrincipalPaid: Double
+          _tmpExtraPrincipalPaid = _stmt.getDouble(_columnIndexOfExtraPrincipalPaid)
+          val _tmpIsCreditCard: Boolean
+          val _tmp_5: Int
+          _tmp_5 = _stmt.getLong(_columnIndexOfIsCreditCard).toInt()
+          _tmpIsCreditCard = _tmp_5 != 0
+          val _tmpStatementDayOfMonth: Int?
+          if (_stmt.isNull(_columnIndexOfStatementDayOfMonth)) {
+            _tmpStatementDayOfMonth = null
+          } else {
+            _tmpStatementDayOfMonth = _stmt.getLong(_columnIndexOfStatementDayOfMonth).toInt()
+          }
+          val _tmpDueDayOfMonth: Int?
+          if (_stmt.isNull(_columnIndexOfDueDayOfMonth)) {
+            _tmpDueDayOfMonth = null
+          } else {
+            _tmpDueDayOfMonth = _stmt.getLong(_columnIndexOfDueDayOfMonth).toInt()
+          }
+          val _tmpCreditLimit: Double?
+          if (_stmt.isNull(_columnIndexOfCreditLimit)) {
+            _tmpCreditLimit = null
+          } else {
+            _tmpCreditLimit = _stmt.getDouble(_columnIndexOfCreditLimit)
+          }
+          val _tmpCurrentStatementBalance: Double?
+          if (_stmt.isNull(_columnIndexOfCurrentStatementBalance)) {
+            _tmpCurrentStatementBalance = null
+          } else {
+            _tmpCurrentStatementBalance = _stmt.getDouble(_columnIndexOfCurrentStatementBalance)
+          }
+          val _tmpMinimumPaymentDue: Double?
+          if (_stmt.isNull(_columnIndexOfMinimumPaymentDue)) {
+            _tmpMinimumPaymentDue = null
+          } else {
+            _tmpMinimumPaymentDue = _stmt.getDouble(_columnIndexOfMinimumPaymentDue)
+          }
+          val _tmpCardApr: Double?
+          if (_stmt.isNull(_columnIndexOfCardApr)) {
+            _tmpCardApr = null
+          } else {
+            _tmpCardApr = _stmt.getDouble(_columnIndexOfCardApr)
+          }
+          _item = SubscriptionEntity(_tmpId,_tmpName,_tmpPrice,_tmpCurrency,_tmpCategoryId,_tmpBillingCycle,_tmpPaymentType,_tmpCustomCycleDays,_tmpFirstBillingDate,_tmpNextBillingDate,_tmpIsTrial,_tmpTrialEndDate,_tmpReminderDaysBefore,_tmpIconResId,_tmpColorHex,_tmpIsActive,_tmpNotes,_tmpLastNotifiedDate,_tmpIsVariablePrice,_tmpTotalInstallments,_tmpCurrentInstallment,_tmpTotalLoanAmount,_tmpInterestRate,_tmpExtraPrincipalPaid,_tmpIsCreditCard,_tmpStatementDayOfMonth,_tmpDueDayOfMonth,_tmpCreditLimit,_tmpCurrentStatementBalance,_tmpMinimumPaymentDue,_tmpCardApr)
           _result.add(_item)
         }
         _result
@@ -303,6 +505,19 @@ public class SubscriptionDao_Impl(
         val _columnIndexOfIsActive: Int = getColumnIndexOrThrow(_stmt, "isActive")
         val _columnIndexOfNotes: Int = getColumnIndexOrThrow(_stmt, "notes")
         val _columnIndexOfLastNotifiedDate: Int = getColumnIndexOrThrow(_stmt, "lastNotifiedDate")
+        val _columnIndexOfIsVariablePrice: Int = getColumnIndexOrThrow(_stmt, "isVariablePrice")
+        val _columnIndexOfTotalInstallments: Int = getColumnIndexOrThrow(_stmt, "totalInstallments")
+        val _columnIndexOfCurrentInstallment: Int = getColumnIndexOrThrow(_stmt, "currentInstallment")
+        val _columnIndexOfTotalLoanAmount: Int = getColumnIndexOrThrow(_stmt, "totalLoanAmount")
+        val _columnIndexOfInterestRate: Int = getColumnIndexOrThrow(_stmt, "interestRate")
+        val _columnIndexOfExtraPrincipalPaid: Int = getColumnIndexOrThrow(_stmt, "extraPrincipalPaid")
+        val _columnIndexOfIsCreditCard: Int = getColumnIndexOrThrow(_stmt, "isCreditCard")
+        val _columnIndexOfStatementDayOfMonth: Int = getColumnIndexOrThrow(_stmt, "statementDayOfMonth")
+        val _columnIndexOfDueDayOfMonth: Int = getColumnIndexOrThrow(_stmt, "dueDayOfMonth")
+        val _columnIndexOfCreditLimit: Int = getColumnIndexOrThrow(_stmt, "creditLimit")
+        val _columnIndexOfCurrentStatementBalance: Int = getColumnIndexOrThrow(_stmt, "currentStatementBalance")
+        val _columnIndexOfMinimumPaymentDue: Int = getColumnIndexOrThrow(_stmt, "minimumPaymentDue")
+        val _columnIndexOfCardApr: Int = getColumnIndexOrThrow(_stmt, "cardApr")
         val _result: MutableList<SubscriptionEntity> = mutableListOf()
         while (_stmt.step()) {
           val _item: SubscriptionEntity
@@ -321,7 +536,9 @@ public class SubscriptionDao_Impl(
           _tmp = _stmt.getText(_columnIndexOfBillingCycle)
           _tmpBillingCycle = __converters.toBillingCycle(_tmp)
           val _tmpPaymentType: PaymentType
-          _tmpPaymentType = __PaymentType_stringToEnum(_stmt.getText(_columnIndexOfPaymentType))
+          val _tmp_1: String
+          _tmp_1 = _stmt.getText(_columnIndexOfPaymentType)
+          _tmpPaymentType = __converters.toPaymentType(_tmp_1)
           val _tmpCustomCycleDays: Int?
           if (_stmt.isNull(_columnIndexOfCustomCycleDays)) {
             _tmpCustomCycleDays = null
@@ -333,9 +550,9 @@ public class SubscriptionDao_Impl(
           val _tmpNextBillingDate: Long
           _tmpNextBillingDate = _stmt.getLong(_columnIndexOfNextBillingDate)
           val _tmpIsTrial: Boolean
-          val _tmp_1: Int
-          _tmp_1 = _stmt.getLong(_columnIndexOfIsTrial).toInt()
-          _tmpIsTrial = _tmp_1 != 0
+          val _tmp_2: Int
+          _tmp_2 = _stmt.getLong(_columnIndexOfIsTrial).toInt()
+          _tmpIsTrial = _tmp_2 != 0
           val _tmpTrialEndDate: Long?
           if (_stmt.isNull(_columnIndexOfTrialEndDate)) {
             _tmpTrialEndDate = null
@@ -357,9 +574,9 @@ public class SubscriptionDao_Impl(
             _tmpColorHex = _stmt.getText(_columnIndexOfColorHex)
           }
           val _tmpIsActive: Boolean
-          val _tmp_2: Int
-          _tmp_2 = _stmt.getLong(_columnIndexOfIsActive).toInt()
-          _tmpIsActive = _tmp_2 != 0
+          val _tmp_3: Int
+          _tmp_3 = _stmt.getLong(_columnIndexOfIsActive).toInt()
+          _tmpIsActive = _tmp_3 != 0
           val _tmpNotes: String?
           if (_stmt.isNull(_columnIndexOfNotes)) {
             _tmpNotes = null
@@ -372,7 +589,73 @@ public class SubscriptionDao_Impl(
           } else {
             _tmpLastNotifiedDate = _stmt.getLong(_columnIndexOfLastNotifiedDate)
           }
-          _item = SubscriptionEntity(_tmpId,_tmpName,_tmpPrice,_tmpCurrency,_tmpCategoryId,_tmpBillingCycle,_tmpPaymentType,_tmpCustomCycleDays,_tmpFirstBillingDate,_tmpNextBillingDate,_tmpIsTrial,_tmpTrialEndDate,_tmpReminderDaysBefore,_tmpIconResId,_tmpColorHex,_tmpIsActive,_tmpNotes,_tmpLastNotifiedDate)
+          val _tmpIsVariablePrice: Boolean
+          val _tmp_4: Int
+          _tmp_4 = _stmt.getLong(_columnIndexOfIsVariablePrice).toInt()
+          _tmpIsVariablePrice = _tmp_4 != 0
+          val _tmpTotalInstallments: Int?
+          if (_stmt.isNull(_columnIndexOfTotalInstallments)) {
+            _tmpTotalInstallments = null
+          } else {
+            _tmpTotalInstallments = _stmt.getLong(_columnIndexOfTotalInstallments).toInt()
+          }
+          val _tmpCurrentInstallment: Int
+          _tmpCurrentInstallment = _stmt.getLong(_columnIndexOfCurrentInstallment).toInt()
+          val _tmpTotalLoanAmount: Double?
+          if (_stmt.isNull(_columnIndexOfTotalLoanAmount)) {
+            _tmpTotalLoanAmount = null
+          } else {
+            _tmpTotalLoanAmount = _stmt.getDouble(_columnIndexOfTotalLoanAmount)
+          }
+          val _tmpInterestRate: Double?
+          if (_stmt.isNull(_columnIndexOfInterestRate)) {
+            _tmpInterestRate = null
+          } else {
+            _tmpInterestRate = _stmt.getDouble(_columnIndexOfInterestRate)
+          }
+          val _tmpExtraPrincipalPaid: Double
+          _tmpExtraPrincipalPaid = _stmt.getDouble(_columnIndexOfExtraPrincipalPaid)
+          val _tmpIsCreditCard: Boolean
+          val _tmp_5: Int
+          _tmp_5 = _stmt.getLong(_columnIndexOfIsCreditCard).toInt()
+          _tmpIsCreditCard = _tmp_5 != 0
+          val _tmpStatementDayOfMonth: Int?
+          if (_stmt.isNull(_columnIndexOfStatementDayOfMonth)) {
+            _tmpStatementDayOfMonth = null
+          } else {
+            _tmpStatementDayOfMonth = _stmt.getLong(_columnIndexOfStatementDayOfMonth).toInt()
+          }
+          val _tmpDueDayOfMonth: Int?
+          if (_stmt.isNull(_columnIndexOfDueDayOfMonth)) {
+            _tmpDueDayOfMonth = null
+          } else {
+            _tmpDueDayOfMonth = _stmt.getLong(_columnIndexOfDueDayOfMonth).toInt()
+          }
+          val _tmpCreditLimit: Double?
+          if (_stmt.isNull(_columnIndexOfCreditLimit)) {
+            _tmpCreditLimit = null
+          } else {
+            _tmpCreditLimit = _stmt.getDouble(_columnIndexOfCreditLimit)
+          }
+          val _tmpCurrentStatementBalance: Double?
+          if (_stmt.isNull(_columnIndexOfCurrentStatementBalance)) {
+            _tmpCurrentStatementBalance = null
+          } else {
+            _tmpCurrentStatementBalance = _stmt.getDouble(_columnIndexOfCurrentStatementBalance)
+          }
+          val _tmpMinimumPaymentDue: Double?
+          if (_stmt.isNull(_columnIndexOfMinimumPaymentDue)) {
+            _tmpMinimumPaymentDue = null
+          } else {
+            _tmpMinimumPaymentDue = _stmt.getDouble(_columnIndexOfMinimumPaymentDue)
+          }
+          val _tmpCardApr: Double?
+          if (_stmt.isNull(_columnIndexOfCardApr)) {
+            _tmpCardApr = null
+          } else {
+            _tmpCardApr = _stmt.getDouble(_columnIndexOfCardApr)
+          }
+          _item = SubscriptionEntity(_tmpId,_tmpName,_tmpPrice,_tmpCurrency,_tmpCategoryId,_tmpBillingCycle,_tmpPaymentType,_tmpCustomCycleDays,_tmpFirstBillingDate,_tmpNextBillingDate,_tmpIsTrial,_tmpTrialEndDate,_tmpReminderDaysBefore,_tmpIconResId,_tmpColorHex,_tmpIsActive,_tmpNotes,_tmpLastNotifiedDate,_tmpIsVariablePrice,_tmpTotalInstallments,_tmpCurrentInstallment,_tmpTotalLoanAmount,_tmpInterestRate,_tmpExtraPrincipalPaid,_tmpIsCreditCard,_tmpStatementDayOfMonth,_tmpDueDayOfMonth,_tmpCreditLimit,_tmpCurrentStatementBalance,_tmpMinimumPaymentDue,_tmpCardApr)
           _result.add(_item)
         }
         _result
@@ -407,6 +690,19 @@ public class SubscriptionDao_Impl(
         val _columnIndexOfIsActive: Int = getColumnIndexOrThrow(_stmt, "isActive")
         val _columnIndexOfNotes: Int = getColumnIndexOrThrow(_stmt, "notes")
         val _columnIndexOfLastNotifiedDate: Int = getColumnIndexOrThrow(_stmt, "lastNotifiedDate")
+        val _columnIndexOfIsVariablePrice: Int = getColumnIndexOrThrow(_stmt, "isVariablePrice")
+        val _columnIndexOfTotalInstallments: Int = getColumnIndexOrThrow(_stmt, "totalInstallments")
+        val _columnIndexOfCurrentInstallment: Int = getColumnIndexOrThrow(_stmt, "currentInstallment")
+        val _columnIndexOfTotalLoanAmount: Int = getColumnIndexOrThrow(_stmt, "totalLoanAmount")
+        val _columnIndexOfInterestRate: Int = getColumnIndexOrThrow(_stmt, "interestRate")
+        val _columnIndexOfExtraPrincipalPaid: Int = getColumnIndexOrThrow(_stmt, "extraPrincipalPaid")
+        val _columnIndexOfIsCreditCard: Int = getColumnIndexOrThrow(_stmt, "isCreditCard")
+        val _columnIndexOfStatementDayOfMonth: Int = getColumnIndexOrThrow(_stmt, "statementDayOfMonth")
+        val _columnIndexOfDueDayOfMonth: Int = getColumnIndexOrThrow(_stmt, "dueDayOfMonth")
+        val _columnIndexOfCreditLimit: Int = getColumnIndexOrThrow(_stmt, "creditLimit")
+        val _columnIndexOfCurrentStatementBalance: Int = getColumnIndexOrThrow(_stmt, "currentStatementBalance")
+        val _columnIndexOfMinimumPaymentDue: Int = getColumnIndexOrThrow(_stmt, "minimumPaymentDue")
+        val _columnIndexOfCardApr: Int = getColumnIndexOrThrow(_stmt, "cardApr")
         val _result: SubscriptionEntity?
         if (_stmt.step()) {
           val _tmpId: Long
@@ -424,7 +720,9 @@ public class SubscriptionDao_Impl(
           _tmp = _stmt.getText(_columnIndexOfBillingCycle)
           _tmpBillingCycle = __converters.toBillingCycle(_tmp)
           val _tmpPaymentType: PaymentType
-          _tmpPaymentType = __PaymentType_stringToEnum(_stmt.getText(_columnIndexOfPaymentType))
+          val _tmp_1: String
+          _tmp_1 = _stmt.getText(_columnIndexOfPaymentType)
+          _tmpPaymentType = __converters.toPaymentType(_tmp_1)
           val _tmpCustomCycleDays: Int?
           if (_stmt.isNull(_columnIndexOfCustomCycleDays)) {
             _tmpCustomCycleDays = null
@@ -436,9 +734,9 @@ public class SubscriptionDao_Impl(
           val _tmpNextBillingDate: Long
           _tmpNextBillingDate = _stmt.getLong(_columnIndexOfNextBillingDate)
           val _tmpIsTrial: Boolean
-          val _tmp_1: Int
-          _tmp_1 = _stmt.getLong(_columnIndexOfIsTrial).toInt()
-          _tmpIsTrial = _tmp_1 != 0
+          val _tmp_2: Int
+          _tmp_2 = _stmt.getLong(_columnIndexOfIsTrial).toInt()
+          _tmpIsTrial = _tmp_2 != 0
           val _tmpTrialEndDate: Long?
           if (_stmt.isNull(_columnIndexOfTrialEndDate)) {
             _tmpTrialEndDate = null
@@ -460,9 +758,9 @@ public class SubscriptionDao_Impl(
             _tmpColorHex = _stmt.getText(_columnIndexOfColorHex)
           }
           val _tmpIsActive: Boolean
-          val _tmp_2: Int
-          _tmp_2 = _stmt.getLong(_columnIndexOfIsActive).toInt()
-          _tmpIsActive = _tmp_2 != 0
+          val _tmp_3: Int
+          _tmp_3 = _stmt.getLong(_columnIndexOfIsActive).toInt()
+          _tmpIsActive = _tmp_3 != 0
           val _tmpNotes: String?
           if (_stmt.isNull(_columnIndexOfNotes)) {
             _tmpNotes = null
@@ -475,7 +773,258 @@ public class SubscriptionDao_Impl(
           } else {
             _tmpLastNotifiedDate = _stmt.getLong(_columnIndexOfLastNotifiedDate)
           }
-          _result = SubscriptionEntity(_tmpId,_tmpName,_tmpPrice,_tmpCurrency,_tmpCategoryId,_tmpBillingCycle,_tmpPaymentType,_tmpCustomCycleDays,_tmpFirstBillingDate,_tmpNextBillingDate,_tmpIsTrial,_tmpTrialEndDate,_tmpReminderDaysBefore,_tmpIconResId,_tmpColorHex,_tmpIsActive,_tmpNotes,_tmpLastNotifiedDate)
+          val _tmpIsVariablePrice: Boolean
+          val _tmp_4: Int
+          _tmp_4 = _stmt.getLong(_columnIndexOfIsVariablePrice).toInt()
+          _tmpIsVariablePrice = _tmp_4 != 0
+          val _tmpTotalInstallments: Int?
+          if (_stmt.isNull(_columnIndexOfTotalInstallments)) {
+            _tmpTotalInstallments = null
+          } else {
+            _tmpTotalInstallments = _stmt.getLong(_columnIndexOfTotalInstallments).toInt()
+          }
+          val _tmpCurrentInstallment: Int
+          _tmpCurrentInstallment = _stmt.getLong(_columnIndexOfCurrentInstallment).toInt()
+          val _tmpTotalLoanAmount: Double?
+          if (_stmt.isNull(_columnIndexOfTotalLoanAmount)) {
+            _tmpTotalLoanAmount = null
+          } else {
+            _tmpTotalLoanAmount = _stmt.getDouble(_columnIndexOfTotalLoanAmount)
+          }
+          val _tmpInterestRate: Double?
+          if (_stmt.isNull(_columnIndexOfInterestRate)) {
+            _tmpInterestRate = null
+          } else {
+            _tmpInterestRate = _stmt.getDouble(_columnIndexOfInterestRate)
+          }
+          val _tmpExtraPrincipalPaid: Double
+          _tmpExtraPrincipalPaid = _stmt.getDouble(_columnIndexOfExtraPrincipalPaid)
+          val _tmpIsCreditCard: Boolean
+          val _tmp_5: Int
+          _tmp_5 = _stmt.getLong(_columnIndexOfIsCreditCard).toInt()
+          _tmpIsCreditCard = _tmp_5 != 0
+          val _tmpStatementDayOfMonth: Int?
+          if (_stmt.isNull(_columnIndexOfStatementDayOfMonth)) {
+            _tmpStatementDayOfMonth = null
+          } else {
+            _tmpStatementDayOfMonth = _stmt.getLong(_columnIndexOfStatementDayOfMonth).toInt()
+          }
+          val _tmpDueDayOfMonth: Int?
+          if (_stmt.isNull(_columnIndexOfDueDayOfMonth)) {
+            _tmpDueDayOfMonth = null
+          } else {
+            _tmpDueDayOfMonth = _stmt.getLong(_columnIndexOfDueDayOfMonth).toInt()
+          }
+          val _tmpCreditLimit: Double?
+          if (_stmt.isNull(_columnIndexOfCreditLimit)) {
+            _tmpCreditLimit = null
+          } else {
+            _tmpCreditLimit = _stmt.getDouble(_columnIndexOfCreditLimit)
+          }
+          val _tmpCurrentStatementBalance: Double?
+          if (_stmt.isNull(_columnIndexOfCurrentStatementBalance)) {
+            _tmpCurrentStatementBalance = null
+          } else {
+            _tmpCurrentStatementBalance = _stmt.getDouble(_columnIndexOfCurrentStatementBalance)
+          }
+          val _tmpMinimumPaymentDue: Double?
+          if (_stmt.isNull(_columnIndexOfMinimumPaymentDue)) {
+            _tmpMinimumPaymentDue = null
+          } else {
+            _tmpMinimumPaymentDue = _stmt.getDouble(_columnIndexOfMinimumPaymentDue)
+          }
+          val _tmpCardApr: Double?
+          if (_stmt.isNull(_columnIndexOfCardApr)) {
+            _tmpCardApr = null
+          } else {
+            _tmpCardApr = _stmt.getDouble(_columnIndexOfCardApr)
+          }
+          _result = SubscriptionEntity(_tmpId,_tmpName,_tmpPrice,_tmpCurrency,_tmpCategoryId,_tmpBillingCycle,_tmpPaymentType,_tmpCustomCycleDays,_tmpFirstBillingDate,_tmpNextBillingDate,_tmpIsTrial,_tmpTrialEndDate,_tmpReminderDaysBefore,_tmpIconResId,_tmpColorHex,_tmpIsActive,_tmpNotes,_tmpLastNotifiedDate,_tmpIsVariablePrice,_tmpTotalInstallments,_tmpCurrentInstallment,_tmpTotalLoanAmount,_tmpInterestRate,_tmpExtraPrincipalPaid,_tmpIsCreditCard,_tmpStatementDayOfMonth,_tmpDueDayOfMonth,_tmpCreditLimit,_tmpCurrentStatementBalance,_tmpMinimumPaymentDue,_tmpCardApr)
+        } else {
+          _result = null
+        }
+        _result
+      } finally {
+        _stmt.close()
+      }
+    }
+  }
+
+  public override suspend fun getSubscriptionByIdOnce(id: Long): SubscriptionEntity? {
+    val _sql: String = "SELECT * FROM subscriptions WHERE id = ?"
+    return performSuspending(__db, true, false) { _connection ->
+      val _stmt: SQLiteStatement = _connection.prepare(_sql)
+      try {
+        var _argIndex: Int = 1
+        _stmt.bindLong(_argIndex, id)
+        val _columnIndexOfId: Int = getColumnIndexOrThrow(_stmt, "id")
+        val _columnIndexOfName: Int = getColumnIndexOrThrow(_stmt, "name")
+        val _columnIndexOfPrice: Int = getColumnIndexOrThrow(_stmt, "price")
+        val _columnIndexOfCurrency: Int = getColumnIndexOrThrow(_stmt, "currency")
+        val _columnIndexOfCategoryId: Int = getColumnIndexOrThrow(_stmt, "categoryId")
+        val _columnIndexOfBillingCycle: Int = getColumnIndexOrThrow(_stmt, "billingCycle")
+        val _columnIndexOfPaymentType: Int = getColumnIndexOrThrow(_stmt, "paymentType")
+        val _columnIndexOfCustomCycleDays: Int = getColumnIndexOrThrow(_stmt, "customCycleDays")
+        val _columnIndexOfFirstBillingDate: Int = getColumnIndexOrThrow(_stmt, "firstBillingDate")
+        val _columnIndexOfNextBillingDate: Int = getColumnIndexOrThrow(_stmt, "nextBillingDate")
+        val _columnIndexOfIsTrial: Int = getColumnIndexOrThrow(_stmt, "isTrial")
+        val _columnIndexOfTrialEndDate: Int = getColumnIndexOrThrow(_stmt, "trialEndDate")
+        val _columnIndexOfReminderDaysBefore: Int = getColumnIndexOrThrow(_stmt, "reminderDaysBefore")
+        val _columnIndexOfIconResId: Int = getColumnIndexOrThrow(_stmt, "iconResId")
+        val _columnIndexOfColorHex: Int = getColumnIndexOrThrow(_stmt, "colorHex")
+        val _columnIndexOfIsActive: Int = getColumnIndexOrThrow(_stmt, "isActive")
+        val _columnIndexOfNotes: Int = getColumnIndexOrThrow(_stmt, "notes")
+        val _columnIndexOfLastNotifiedDate: Int = getColumnIndexOrThrow(_stmt, "lastNotifiedDate")
+        val _columnIndexOfIsVariablePrice: Int = getColumnIndexOrThrow(_stmt, "isVariablePrice")
+        val _columnIndexOfTotalInstallments: Int = getColumnIndexOrThrow(_stmt, "totalInstallments")
+        val _columnIndexOfCurrentInstallment: Int = getColumnIndexOrThrow(_stmt, "currentInstallment")
+        val _columnIndexOfTotalLoanAmount: Int = getColumnIndexOrThrow(_stmt, "totalLoanAmount")
+        val _columnIndexOfInterestRate: Int = getColumnIndexOrThrow(_stmt, "interestRate")
+        val _columnIndexOfExtraPrincipalPaid: Int = getColumnIndexOrThrow(_stmt, "extraPrincipalPaid")
+        val _columnIndexOfIsCreditCard: Int = getColumnIndexOrThrow(_stmt, "isCreditCard")
+        val _columnIndexOfStatementDayOfMonth: Int = getColumnIndexOrThrow(_stmt, "statementDayOfMonth")
+        val _columnIndexOfDueDayOfMonth: Int = getColumnIndexOrThrow(_stmt, "dueDayOfMonth")
+        val _columnIndexOfCreditLimit: Int = getColumnIndexOrThrow(_stmt, "creditLimit")
+        val _columnIndexOfCurrentStatementBalance: Int = getColumnIndexOrThrow(_stmt, "currentStatementBalance")
+        val _columnIndexOfMinimumPaymentDue: Int = getColumnIndexOrThrow(_stmt, "minimumPaymentDue")
+        val _columnIndexOfCardApr: Int = getColumnIndexOrThrow(_stmt, "cardApr")
+        val _result: SubscriptionEntity?
+        if (_stmt.step()) {
+          val _tmpId: Long
+          _tmpId = _stmt.getLong(_columnIndexOfId)
+          val _tmpName: String
+          _tmpName = _stmt.getText(_columnIndexOfName)
+          val _tmpPrice: Double
+          _tmpPrice = _stmt.getDouble(_columnIndexOfPrice)
+          val _tmpCurrency: String
+          _tmpCurrency = _stmt.getText(_columnIndexOfCurrency)
+          val _tmpCategoryId: Int
+          _tmpCategoryId = _stmt.getLong(_columnIndexOfCategoryId).toInt()
+          val _tmpBillingCycle: BillingCycle
+          val _tmp: String
+          _tmp = _stmt.getText(_columnIndexOfBillingCycle)
+          _tmpBillingCycle = __converters.toBillingCycle(_tmp)
+          val _tmpPaymentType: PaymentType
+          val _tmp_1: String
+          _tmp_1 = _stmt.getText(_columnIndexOfPaymentType)
+          _tmpPaymentType = __converters.toPaymentType(_tmp_1)
+          val _tmpCustomCycleDays: Int?
+          if (_stmt.isNull(_columnIndexOfCustomCycleDays)) {
+            _tmpCustomCycleDays = null
+          } else {
+            _tmpCustomCycleDays = _stmt.getLong(_columnIndexOfCustomCycleDays).toInt()
+          }
+          val _tmpFirstBillingDate: Long
+          _tmpFirstBillingDate = _stmt.getLong(_columnIndexOfFirstBillingDate)
+          val _tmpNextBillingDate: Long
+          _tmpNextBillingDate = _stmt.getLong(_columnIndexOfNextBillingDate)
+          val _tmpIsTrial: Boolean
+          val _tmp_2: Int
+          _tmp_2 = _stmt.getLong(_columnIndexOfIsTrial).toInt()
+          _tmpIsTrial = _tmp_2 != 0
+          val _tmpTrialEndDate: Long?
+          if (_stmt.isNull(_columnIndexOfTrialEndDate)) {
+            _tmpTrialEndDate = null
+          } else {
+            _tmpTrialEndDate = _stmt.getLong(_columnIndexOfTrialEndDate)
+          }
+          val _tmpReminderDaysBefore: Int
+          _tmpReminderDaysBefore = _stmt.getLong(_columnIndexOfReminderDaysBefore).toInt()
+          val _tmpIconResId: String?
+          if (_stmt.isNull(_columnIndexOfIconResId)) {
+            _tmpIconResId = null
+          } else {
+            _tmpIconResId = _stmt.getText(_columnIndexOfIconResId)
+          }
+          val _tmpColorHex: String?
+          if (_stmt.isNull(_columnIndexOfColorHex)) {
+            _tmpColorHex = null
+          } else {
+            _tmpColorHex = _stmt.getText(_columnIndexOfColorHex)
+          }
+          val _tmpIsActive: Boolean
+          val _tmp_3: Int
+          _tmp_3 = _stmt.getLong(_columnIndexOfIsActive).toInt()
+          _tmpIsActive = _tmp_3 != 0
+          val _tmpNotes: String?
+          if (_stmt.isNull(_columnIndexOfNotes)) {
+            _tmpNotes = null
+          } else {
+            _tmpNotes = _stmt.getText(_columnIndexOfNotes)
+          }
+          val _tmpLastNotifiedDate: Long?
+          if (_stmt.isNull(_columnIndexOfLastNotifiedDate)) {
+            _tmpLastNotifiedDate = null
+          } else {
+            _tmpLastNotifiedDate = _stmt.getLong(_columnIndexOfLastNotifiedDate)
+          }
+          val _tmpIsVariablePrice: Boolean
+          val _tmp_4: Int
+          _tmp_4 = _stmt.getLong(_columnIndexOfIsVariablePrice).toInt()
+          _tmpIsVariablePrice = _tmp_4 != 0
+          val _tmpTotalInstallments: Int?
+          if (_stmt.isNull(_columnIndexOfTotalInstallments)) {
+            _tmpTotalInstallments = null
+          } else {
+            _tmpTotalInstallments = _stmt.getLong(_columnIndexOfTotalInstallments).toInt()
+          }
+          val _tmpCurrentInstallment: Int
+          _tmpCurrentInstallment = _stmt.getLong(_columnIndexOfCurrentInstallment).toInt()
+          val _tmpTotalLoanAmount: Double?
+          if (_stmt.isNull(_columnIndexOfTotalLoanAmount)) {
+            _tmpTotalLoanAmount = null
+          } else {
+            _tmpTotalLoanAmount = _stmt.getDouble(_columnIndexOfTotalLoanAmount)
+          }
+          val _tmpInterestRate: Double?
+          if (_stmt.isNull(_columnIndexOfInterestRate)) {
+            _tmpInterestRate = null
+          } else {
+            _tmpInterestRate = _stmt.getDouble(_columnIndexOfInterestRate)
+          }
+          val _tmpExtraPrincipalPaid: Double
+          _tmpExtraPrincipalPaid = _stmt.getDouble(_columnIndexOfExtraPrincipalPaid)
+          val _tmpIsCreditCard: Boolean
+          val _tmp_5: Int
+          _tmp_5 = _stmt.getLong(_columnIndexOfIsCreditCard).toInt()
+          _tmpIsCreditCard = _tmp_5 != 0
+          val _tmpStatementDayOfMonth: Int?
+          if (_stmt.isNull(_columnIndexOfStatementDayOfMonth)) {
+            _tmpStatementDayOfMonth = null
+          } else {
+            _tmpStatementDayOfMonth = _stmt.getLong(_columnIndexOfStatementDayOfMonth).toInt()
+          }
+          val _tmpDueDayOfMonth: Int?
+          if (_stmt.isNull(_columnIndexOfDueDayOfMonth)) {
+            _tmpDueDayOfMonth = null
+          } else {
+            _tmpDueDayOfMonth = _stmt.getLong(_columnIndexOfDueDayOfMonth).toInt()
+          }
+          val _tmpCreditLimit: Double?
+          if (_stmt.isNull(_columnIndexOfCreditLimit)) {
+            _tmpCreditLimit = null
+          } else {
+            _tmpCreditLimit = _stmt.getDouble(_columnIndexOfCreditLimit)
+          }
+          val _tmpCurrentStatementBalance: Double?
+          if (_stmt.isNull(_columnIndexOfCurrentStatementBalance)) {
+            _tmpCurrentStatementBalance = null
+          } else {
+            _tmpCurrentStatementBalance = _stmt.getDouble(_columnIndexOfCurrentStatementBalance)
+          }
+          val _tmpMinimumPaymentDue: Double?
+          if (_stmt.isNull(_columnIndexOfMinimumPaymentDue)) {
+            _tmpMinimumPaymentDue = null
+          } else {
+            _tmpMinimumPaymentDue = _stmt.getDouble(_columnIndexOfMinimumPaymentDue)
+          }
+          val _tmpCardApr: Double?
+          if (_stmt.isNull(_columnIndexOfCardApr)) {
+            _tmpCardApr = null
+          } else {
+            _tmpCardApr = _stmt.getDouble(_columnIndexOfCardApr)
+          }
+          _result = SubscriptionEntity(_tmpId,_tmpName,_tmpPrice,_tmpCurrency,_tmpCategoryId,_tmpBillingCycle,_tmpPaymentType,_tmpCustomCycleDays,_tmpFirstBillingDate,_tmpNextBillingDate,_tmpIsTrial,_tmpTrialEndDate,_tmpReminderDaysBefore,_tmpIconResId,_tmpColorHex,_tmpIsActive,_tmpNotes,_tmpLastNotifiedDate,_tmpIsVariablePrice,_tmpTotalInstallments,_tmpCurrentInstallment,_tmpTotalLoanAmount,_tmpInterestRate,_tmpExtraPrincipalPaid,_tmpIsCreditCard,_tmpStatementDayOfMonth,_tmpDueDayOfMonth,_tmpCreditLimit,_tmpCurrentStatementBalance,_tmpMinimumPaymentDue,_tmpCardApr)
         } else {
           _result = null
         }
@@ -487,7 +1036,7 @@ public class SubscriptionDao_Impl(
   }
 
   public override fun getEstimatedMonthlyTotal(): Flow<Double?> {
-    val _sql: String = "SELECT SUM(CASE WHEN billingCycle = 'MONTHLY' THEN price WHEN billingCycle = 'YEARLY' THEN price / 12 ELSE 0 END) FROM subscriptions WHERE isActive = 1"
+    val _sql: String = "SELECT SUM(CASE WHEN billingCycle = 'MONTHLY' THEN price WHEN billingCycle = 'YEARLY' THEN price / 12.0 WHEN billingCycle = 'CUSTOM' THEN price * 30.0 / MAX(COALESCE(customCycleDays, 30), 1) ELSE 0 END) FROM subscriptions WHERE isActive = 1"
     return createFlow(__db, false, arrayOf("subscriptions")) { _connection ->
       val _stmt: SQLiteStatement = _connection.prepare(_sql)
       try {
@@ -524,17 +1073,6 @@ public class SubscriptionDao_Impl(
         _stmt.close()
       }
     }
-  }
-
-  private fun __PaymentType_enumToString(_value: PaymentType): String = when (_value) {
-    PaymentType.AUTO_PAY -> "AUTO_PAY"
-    PaymentType.MANUAL -> "MANUAL"
-  }
-
-  private fun __PaymentType_stringToEnum(_value: String): PaymentType = when (_value) {
-    "AUTO_PAY" -> PaymentType.AUTO_PAY
-    "MANUAL" -> PaymentType.MANUAL
-    else -> throw IllegalArgumentException("Can't convert value to enum, unknown value: " + _value)
   }
 
   public companion object {

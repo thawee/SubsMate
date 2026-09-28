@@ -20,6 +20,13 @@ import androidx.compose.ui.unit.dp
 
 import com.mate.subsmate.ui.theme.SubsMateTheme
 import com.mate.subsmate.ui.theme.GlassyCard
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +37,18 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
     var showCustomCurrencyInput by remember { mutableStateOf(false) }
     var customCurrencyCode by remember { mutableStateOf("") }
     val isDark = isSystemInDarkTheme()
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                viewModel.toggleNotifications(true)
+                com.mate.subsmate.data.worker.RenewalNotificationWorker.runNow(context)
+            } else {
+                viewModel.toggleNotifications(false)
+            }
+        }
+    )
 
     Scaffold(
         topBar = {
@@ -104,7 +123,23 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                             subtitle = "Get alerts before renewals",
                             icon = Icons.Default.Notifications,
                             checked = uiState.notificationsEnabled,
-                            onCheckedChange = { viewModel.toggleNotifications(it) }
+                            onCheckedChange = { isChecked ->
+                                if (isChecked) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                                            viewModel.toggleNotifications(true)
+                                            com.mate.subsmate.data.worker.RenewalNotificationWorker.runNow(context)
+                                        } else {
+                                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                    } else {
+                                        viewModel.toggleNotifications(true)
+                                        com.mate.subsmate.data.worker.RenewalNotificationWorker.runNow(context)
+                                    }
+                                } else {
+                                    viewModel.toggleNotifications(false)
+                                }
+                            }
                         )
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                         SettingClickableItem(

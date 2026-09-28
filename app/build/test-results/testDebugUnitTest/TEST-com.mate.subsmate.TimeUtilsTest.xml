@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.mate.subsmate.TimeUtilsTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-06-14T16:23:31.942Z" hostname="KB-XXAXXW9TX4" time="0.0">
+  <properties/>
+  <testcase name="millis per hour is correct" classname="com.mate.subsmate.TimeUtilsTest" time="0.0"/>
+  <testcase name="millis per minute is correct" classname="com.mate.subsmate.TimeUtilsTest" time="0.0"/>
+  <testcase name="millis per day is correct" classname="com.mate.subsmate.TimeUtilsTest" time="0.0"/>
+  <testcase name="millis per day multiplied by 7 equals one week" classname="com.mate.subsmate.TimeUtilsTest" time="0.0"/>
+  <testcase name="millis per second is correct" classname="com.mate.subsmate.TimeUtilsTest" time="0.0"/>
+  <testcase name="default custom cycle days is 30" classname="com.mate.subsmate.TimeUtilsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

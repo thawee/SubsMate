@@ -9,6 +9,7 @@ object BillingUtils {
         val now = System.currentTimeMillis()
         val cycleDays = customCycleDays?.coerceAtLeast(1) ?: TimeUtils.DEFAULT_CUSTOM_CYCLE_DAYS
 
+        // Fast-forward to the next date strictly in the future (or today)
         while (calendar.timeInMillis <= now) {
             when (cycle) {
                 BillingCycle.MONTHLY -> calendar.add(Calendar.MONTH, 1)

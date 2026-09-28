@@ -30,5 +30,12 @@ data class SubscriptionEntity(
     val currentInstallment: Int = 0,
     val totalLoanAmount: Double? = null,
     val interestRate: Double? = null,
-    val extraPrincipalPaid: Double = 0.0
+    val extraPrincipalPaid: Double = 0.0,
+    val isCreditCard: Boolean = false,
+    val statementDayOfMonth: Int? = null,
+    val dueDayOfMonth: Int? = null,
+    val creditLimit: Double? = null,
+    val currentStatementBalance: Double? = null,
+    val minimumPaymentDue: Double? = null,
+    val cardApr: Double? = null
 )
