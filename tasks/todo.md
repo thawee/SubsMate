@@ -68,3 +68,10 @@
 - [x] Load and save notes through the existing subscription entity without losing them on edits.
 - [x] Show a short notes preview in subscription management for active and completed items.
 - [x] Verify note creation, editing, clearing, and screen layout with focused checks and a build.
+
+## Insights Upgrade: Timeline, Top Subscriptions, Drill-down (2026-10-02)
+- [x] Add monthly forecast buckets to `ForecastUtils` and combine 6 past actual months with 12 forecast months into one timeline chart (forecast bars faded, "Today" divider).
+- [x] Add a "Top subscriptions" ranked list by yearly cost for the selected currency.
+- [x] Make category rows expandable to list their subscriptions with yearly cost.
+- [x] Layout fixes: keep the donut next to its category list, collapse forecast caveats into one expandable line, format chart semantics amounts.
+- [x] Unit tests for monthly buckets, yearly cost ranking, and category grouping; run tests, build, and check on the emulator.

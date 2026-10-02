@@ -5,6 +5,9 @@ import com.mate.subsmate.domain.model.CategoryDefaults
 import com.mate.subsmate.ui.insights.CategorySpend
 
 object CategoryUtils {
+    fun colorHex(categoryId: Int): String =
+        CategoryDefaults.categories.find { it.id == categoryId }?.colorHex ?: "#808080"
+
     fun calculateCategoryBreakdown(subs: List<SubscriptionEntity>, total: Double): List<CategorySpend> {
         if (total <= 0) return emptyList()
 
@@ -26,7 +29,8 @@ object CategoryUtils {
                 categoryName = category?.name ?: "Other",
                 amount = amount,
                 percentage = (amount / total).toFloat(),
-                colorHex = category?.colorHex ?: "#808080"
+                colorHex = category?.colorHex ?: "#808080",
+                categoryId = catId
             )
         }.sortedByDescending { it.amount }
     }

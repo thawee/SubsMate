@@ -2,6 +2,7 @@ package com.mate.subsmate.ui.utils
 
 import com.mate.subsmate.data.local.entities.SubscriptionEntity
 import java.time.Instant
+import java.time.YearMonth
 import java.time.ZoneId
 
 data class SpendingForecast(
@@ -9,7 +10,9 @@ data class SpendingForecast(
     val overdueAmount: Double = 0.0,
     val overdueCharges: Int = 0,
     val hasUnknownAmounts: Boolean = false,
-    val usesVariableAmounts: Boolean = false
+    val usesVariableAmounts: Boolean = false,
+    val amountsByMonth: Map<YearMonth, Double> = emptyMap(),
+    val amountsBySubscription: Map<Long, Double> = emptyMap()
 ) {
     val total: Double get() = amountsByCategory.values.sum()
 }
@@ -25,6 +28,8 @@ object ForecastUtils {
         val start = startDate.atStartOfDay(zone).toInstant().toEpochMilli()
         val end = startDate.plusYears(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val categoryAmounts = mutableMapOf<Int, Double>()
+        val monthAmounts = mutableMapOf<YearMonth, Double>()
+        val subscriptionAmounts = mutableMapOf<Long, Double>()
         var overdueAmount = 0.0
         var overdueCharges = 0
         var hasUnknownAmounts = false
@@ -46,7 +51,9 @@ object ForecastUtils {
                             overdueAmount += sub.price
                             overdueCharges++
                         } else {
-                            categoryAmounts[sub.categoryId] = (categoryAmounts[sub.categoryId] ?: 0.0) + sub.price
+                            categoryAmounts.merge(sub.categoryId, sub.price, Double::plus)
+                            monthAmounts.merge(YearMonth.from(Instant.ofEpochMilli(chargeDate).atZone(zone)), sub.price, Double::plus)
+                            subscriptionAmounts.merge(sub.id, sub.price, Double::plus)
                         }
                     }
                     remaining = remaining?.minus(1)
@@ -54,6 +61,9 @@ object ForecastUtils {
                 }
             }
 
-        return SpendingForecast(categoryAmounts, overdueAmount, overdueCharges, hasUnknownAmounts, usesVariableAmounts)
+        return SpendingForecast(
+            categoryAmounts, overdueAmount, overdueCharges, hasUnknownAmounts, usesVariableAmounts,
+            monthAmounts, subscriptionAmounts
+        )
     }
 }

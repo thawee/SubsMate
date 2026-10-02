@@ -9,6 +9,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.ZoneId
 
 class ForecastUtilsTest {
@@ -84,6 +85,21 @@ class ForecastUtilsTest {
         assertEquals(40.0, forecast.total, 0.001)
         assertEquals(1, categories.size)
         assertEquals(1f, categories.single().percentage, 0.001f)
+    }
+
+    @Test fun groupsChargesByMonthAndSubscription() {
+        val monthly = sub(100.0, BillingCycle.MONTHLY, date(2026, 10, 15), categoryId = 1).copy(id = 1)
+        val yearly = sub(1200.0, BillingCycle.YEARLY, date(2027, 3, 1), categoryId = 2).copy(id = 2)
+        val overdue = sub(40.0, BillingCycle.MONTHLY, date(2026, 9, 20), categoryId = 3).copy(id = 3)
+
+        val forecast = ForecastUtils.nextTwelveMonths(listOf(monthly, yearly, overdue), "THB", today)
+
+        assertEquals(140.0, forecast.amountsByMonth[YearMonth.of(2026, 10)]!!, 0.001)
+        assertEquals(1340.0, forecast.amountsByMonth[YearMonth.of(2027, 3)]!!, 0.001)
+        assertEquals(forecast.total, forecast.amountsByMonth.values.sum(), 0.001)
+        assertEquals(1200.0, forecast.amountsBySubscription[1L]!!, 0.001)
+        assertEquals(1200.0, forecast.amountsBySubscription[2L]!!, 0.001)
+        assertEquals(480.0, forecast.amountsBySubscription[3L]!!, 0.001)
     }
 
     private fun sub(

@@ -13,8 +13,27 @@ data class CategorySpend(
     val categoryName: String,
     val amount: Double,
     val percentage: Float,
-    val colorHex: String
+    val colorHex: String,
+    val categoryId: Int = -1
 )
+
+data class SubscriptionSpend(
+    val id: Long,
+    val name: String,
+    val categoryId: Int,
+    val colorHex: String,
+    val amount: Double,
+    val nextTwelveMonths: Double
+)
+
+data class TimelineMonth(
+    val label: String,
+    val paid: Double,
+    val forecast: Double,
+    val isCurrent: Boolean
+) {
+    val total: Double get() = paid + forecast
+}
 
 data class MonthlySpend(
     val monthName: String,
@@ -31,7 +50,9 @@ data class InsightsUiState(
     val forecast: SpendingForecast = SpendingForecast(),
     val forecastBreakdown: List<CategorySpend> = emptyList(),
     val selectedPeriod: InsightsPeriod = InsightsPeriod.MONTHLY,
-    val monthlyHistory: List<MonthlySpend> = emptyList(),
+    val monthlyRanking: List<SubscriptionSpend> = emptyList(),
+    val forecastRanking: List<SubscriptionSpend> = emptyList(),
+    val timeline: List<TimelineMonth> = emptyList(),
     val isLoading: Boolean = true
 )
 
@@ -51,8 +72,8 @@ class InsightsViewModel(
         val currencyPayments = payments.filter { it.currency.equals(currency, ignoreCase = true) }
         val monthlyTotal = SpendingUtils.monthlyTotal(currencySubs, currency)
         val breakdown = CategoryUtils.calculateCategoryBreakdown(currencySubs, monthlyTotal)
-        val history = if (currencyPayments.isEmpty()) emptyList() else SpendingUtils.monthlyHistory(currencyPayments, currency)
         val forecast = ForecastUtils.nextTwelveMonths(currencySubs, currency)
+        val timeline = SpendingUtils.timeline(currencyPayments, forecast.amountsByMonth, currency)
         
         InsightsUiState(
             selectedCurrency = currency,
@@ -62,7 +83,11 @@ class InsightsViewModel(
             forecast = forecast,
             forecastBreakdown = CategoryUtils.fromCategoryAmounts(forecast.amountsByCategory),
             selectedPeriod = period,
-            monthlyHistory = history,
+            monthlyRanking = SpendingUtils.rankSubscriptions(currencySubs, forecast.amountsBySubscription, SpendingUtils::monthlyAmount),
+            forecastRanking = SpendingUtils.rankSubscriptions(currencySubs, forecast.amountsBySubscription) {
+                forecast.amountsBySubscription[it.id]
+            },
+            timeline = if (timeline.any { it.total > 0.0 }) timeline else emptyList(),
             isLoading = false
         )
     }.stateIn(

@@ -21,11 +21,13 @@ The launcher icon reflects the premium nature of the app:
 - **Fluid Micro-Interactions**: Lists utilize `Modifier.animateItem()` to smoothly shift content when items are added, removed, or marked as paid.
 - **Empty States**: A custom `EmptyStateView` greets users when lists are empty, providing branded illustrations and encouraging micro-copy rather than dead space.
 - **Notes**: The add/edit form has an optional multi-line Notes card (3 to 5 lines, then scrolls). `SubscriptionManageItem` shows the first two lines with an ellipsis.
-- **Insights Modes**: A Monthly equivalent / Next 12 months toggle switches the overview total, donut, and category rows together. Forecast values are labelled as estimates; the payment-history chart is labelled as actual spending.
+- **Insights Modes**: A Monthly equivalent / Next 12 months toggle switches the overview total, donut, category rows, and Top Subscriptions together. Forecast caveats sit under one expandable "About this estimate" line.
+- **Insights Sections**: Order is overview (donut), category list (its legend, each row expandable to its subscriptions), Top Subscriptions (top 5, "Show all"), then the Spending Timeline.
+- **Spending Timeline**: A horizontally scrolling bar chart of 17 months: 6 months of actual payments (solid primary) and scheduled charges for this month plus 11 ahead (primary at 45% alpha), stacked in the current month. It opens scrolled near the current month, which is labelled in bold primary; January labels carry the year.
 - **Haptic Feedback**: Meaningful interactions (marking as paid, undoing, deleting) are grounded with physical `HapticFeedbackType.LongPress` feedback.
 
 ## 4. Accessibility (a11y)
-- **Charts**: Complex data visualisations (`DonutChart`, `MonthlySpendChart`) utilize `semantics` modifiers so screen readers (TalkBack) can read out summarized insights.
+- **Charts**: Complex data visualisations (`DonutChart`, `SpendingTimelineChart`, `SpendingTrendChart`) utilize `semantics` modifiers so screen readers (TalkBack) can read out summarized insights, with amounts formatted the same way as on screen.
 - **Contrast**: Text primarily uses pure white (`#FFFFFF`) or high-contrast Slate variants against the deep Navy backgrounds.
 
 ## 5. Onboarding

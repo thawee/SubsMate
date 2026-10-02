@@ -386,7 +386,7 @@ fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
                         .fillMaxSize()
                         .semantics {
                             val maxMonth = history.maxByOrNull { it.amount }
-                            contentDescription = "Bar chart showing spending trend. Highest spending was in ${maxMonth?.monthName ?: ""} with $currencySymbol${maxMonth?.amount ?: 0}."
+                            contentDescription = "Bar chart showing spending trend. Highest spending was in ${maxMonth?.monthName ?: ""} with $currencySymbol${String.format("%,.2f", maxMonth?.amount ?: 0.0)}."
                         },
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.Bottom

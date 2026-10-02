@@ -187,7 +187,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 GlassyCard(modifier = Modifier.fillMaxWidth()) {
                     SettingClickableItem(
                         title = "SubsMate",
-                        subtitle = "Version 0.4.0 (Mate Series)",
+                        subtitle = "Version ${com.mate.subsmate.BuildConfig.VERSION_NAME} (Mate Series)",
                         icon = Icons.Default.Info,
                         onClick = { }
                     )
