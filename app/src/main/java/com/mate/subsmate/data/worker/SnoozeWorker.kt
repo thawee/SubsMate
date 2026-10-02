@@ -8,6 +8,7 @@ import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.mate.subsmate.data.local.database.AppDatabase
+import com.mate.subsmate.data.local.preferences.PreferenceManager
 import com.mate.subsmate.ui.utils.CurrencyUtils
 
 class SnoozeWorker(
@@ -22,7 +23,11 @@ class SnoozeWorker(
         val db = AppDatabase.getInstance(applicationContext)
         val sub = db.subscriptionDao().getSubscriptionByIdOnce(subId) ?: return Result.failure()
 
-        if (!sub.isActive) return Result.success()
+        val prefs = PreferenceManager(applicationContext)
+        if (!sub.isActive ||
+            sub.nextBillingDate != inputData.getLong("nextBillingDate", -1) ||
+            !prefs.getBoolean(PreferenceManager.KEY_NOTIFICATIONS, true)
+        ) return Result.success()
 
         val symbol = CurrencyUtils.getSymbol(sub.currency)
         val priceMessage = when {
@@ -36,6 +41,7 @@ class SnoozeWorker(
             "Subscription Renewal",
             "${sub.name} is renewing soon$priceMessage"
         )
+        db.subscriptionDao().updateSubscription(sub.copy(lastNotifiedDate = System.currentTimeMillis()))
 
         return Result.success()
     }

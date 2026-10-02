@@ -59,15 +59,17 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         // Snooze for 1 day
                         val snoozeTime = System.currentTimeMillis() + TimeUtils.MILLIS_PER_DAY
                         dao.updateSubscription(sub.copy(
-                            lastNotifiedDate = null,
-                            reminderDaysBefore = 1
+                            lastNotifiedDate = snoozeTime
                         ))
 
                         // Schedule a one-time work for 24 hours later
                         val workRequest = androidx.work.OneTimeWorkRequestBuilder<SnoozeWorker>()
                             .setInitialDelay(24, java.util.concurrent.TimeUnit.HOURS)
                             .setInputData(
-                                androidx.work.workDataOf("subscriptionId" to subId)
+                                androidx.work.workDataOf(
+                                    "subscriptionId" to subId,
+                                    "nextBillingDate" to sub.nextBillingDate
+                                )
                             )
                             .build()
                         androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(

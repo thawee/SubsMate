@@ -20,6 +20,8 @@ The launcher icon reflects the premium nature of the app:
 - **Glassmorphism**: Component cards (e.g., `GlassyCard`, `SubscriptionManageItem`) use translucent backgrounds (`GlassNavy.copy(alpha = 0.3f)`) over glowing `Canvas` background blobs.
 - **Fluid Micro-Interactions**: Lists utilize `Modifier.animateItem()` to smoothly shift content when items are added, removed, or marked as paid.
 - **Empty States**: A custom `EmptyStateView` greets users when lists are empty, providing branded illustrations and encouraging micro-copy rather than dead space.
+- **Notes**: The add/edit form has an optional multi-line Notes card (3 to 5 lines, then scrolls). `SubscriptionManageItem` shows the first two lines with an ellipsis.
+- **Insights Modes**: A Monthly equivalent / Next 12 months toggle switches the overview total, donut, and category rows together. Forecast values are labelled as estimates; the payment-history chart is labelled as actual spending.
 - **Haptic Feedback**: Meaningful interactions (marking as paid, undoing, deleting) are grounded with physical `HapticFeedbackType.LongPress` feedback.
 
 ## 4. Accessibility (a11y)

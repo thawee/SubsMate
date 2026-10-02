@@ -28,12 +28,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mate.subsmate.ui.utils.CurrencyUtils
+import com.mate.subsmate.ui.utils.PercentageUtils
+import com.mate.subsmate.ui.components.CurrencyFilter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InsightsScreen(viewModel: InsightsViewModel, currency: String) {
+fun InsightsScreen(viewModel: InsightsViewModel) {
     val uiState by viewModel.uiState.collectAsState()
-    val currencySymbol = CurrencyUtils.getSymbol(currency)
+    val currencySymbol = CurrencyUtils.getSymbol(uiState.selectedCurrency)
+    val showingForecast = uiState.selectedPeriod == InsightsPeriod.NEXT_TWELVE_MONTHS
+    val displayedBreakdown = if (showingForecast) uiState.forecastBreakdown else uiState.categoryBreakdown
+    val displayedTotal = if (showingForecast) uiState.forecast.total else uiState.totalMonthlySpend
+    val formattedTotal = "$currencySymbol${String.format("%,.2f", displayedTotal)}"
+    val hasOverview = uiState.categoryBreakdown.isNotEmpty() || uiState.forecastBreakdown.isNotEmpty() ||
+        uiState.forecast.hasUnknownAmounts || uiState.forecast.overdueCharges > 0
 
     Scaffold(
         topBar = {
@@ -52,53 +60,122 @@ fun InsightsScreen(viewModel: InsightsViewModel, currency: String) {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                if (uiState.categoryBreakdown.isEmpty()) {
+                item {
+                    Column {
+                        Text("Spending currency", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground)
+                        CurrencyFilter(
+                            currencies = uiState.availableCurrencies,
+                            selected = uiState.selectedCurrency,
+                            onSelect = viewModel::setCurrency,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+                if (!hasOverview && uiState.monthlyHistory.isEmpty()) {
                     item {
                         com.mate.subsmate.ui.components.EmptyStateView(
                             icon = Icons.Default.Add,
                             title = "No Data Yet",
-                            subtitle = "Add your first subscription to generate beautiful spending insights.",
-                            modifier = Modifier.fillParentMaxSize()
+                            subtitle = "No subscriptions or payments in ${uiState.selectedCurrency} yet.",
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 } else {
-                    item {
-                        Text(
-                            "Spending Overview",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    item {
-                        Box(modifier = Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
-                            DonutChart(uiState.categoryBreakdown)
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("Total / Mo", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (hasOverview) {
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
-                                    "$currencySymbol${String.format("%.2f", uiState.totalMonthlySpend)}",
-                                    style = MaterialTheme.typography.headlineSmall,
+                                    "Spending Overview",
+                                    style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    FilterChip(
+                                        selected = !showingForecast,
+                                        onClick = { viewModel.setPeriod(InsightsPeriod.MONTHLY) },
+                                        label = { Text("Monthly") }
+                                    )
+                                    FilterChip(
+                                        selected = showingForecast,
+                                        onClick = { viewModel.setPeriod(InsightsPeriod.NEXT_TWELVE_MONTHS) },
+                                        label = { Text("Next 12 months") }
+                                    )
+                                }
+                                Text(
+                                    if (showingForecast) "Estimated from scheduled charges" else "Monthly equivalent based on active subscriptions",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().height(if (displayedBreakdown.isEmpty()) 140.dp else 240.dp), contentAlignment = Alignment.Center) {
+                                if (displayedBreakdown.isNotEmpty()) DonutChart(displayedBreakdown)
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        if (showingForecast) "Next 12 months" else "Total / Mo",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        formattedTotal,
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = when {
+                                            formattedTotal.length > 16 -> 14.sp
+                                            formattedTotal.length > 13 -> 18.sp
+                                            else -> MaterialTheme.typography.headlineSmall.fontSize
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        if (showingForecast) {
+                            if (uiState.forecast.usesVariableAmounts) {
+                                item {
+                                    Text(
+                                        "Variable-price charges use their saved amount; actual charges may differ.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            if (uiState.forecast.hasUnknownAmounts) {
+                                item {
+                                    Text(
+                                        "Some variable-price charges have no saved amount and are excluded from this estimate.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            if (uiState.forecast.overdueCharges > 0) {
+                                item {
+                                    Text(
+                                        "Overdue: $currencySymbol${String.format("%,.2f", uiState.forecast.overdueAmount)} across ${uiState.forecast.overdueCharges} charges, excluded from the next 12 months.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
-
                     if (uiState.monthlyHistory.isNotEmpty()) {
                         item {
                             MonthlySpendChart(uiState.monthlyHistory, currencySymbol)
                         }
                     }
-
-                    item {
-                        Text(
-                            "Category Breakdown",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    items(uiState.categoryBreakdown) { categorySpend ->
-                        CategorySpendItem(categorySpend, currencySymbol)
+                    if (displayedBreakdown.isNotEmpty()) {
+                        item {
+                            Text(
+                                if (showingForecast) "Forecast by Category" else "Category Breakdown",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        items(displayedBreakdown) { categorySpend ->
+                            CategorySpendItem(categorySpend, currencySymbol)
+                        }
                     }
                 }
             }
@@ -156,14 +233,14 @@ fun CategorySpendItem(spend: CategorySpend, currencySymbol: String) {
         Column(modifier = Modifier.weight(1f)) {
             Text(spend.categoryName, fontWeight = FontWeight.Medium)
             Text(
-                "${(spend.percentage * 100).toInt()}% of total spend",
+                "${PercentageUtils.label(spend.percentage)} of total spend",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
         Text(
-            "$currencySymbol${String.format("%.2f", spend.amount)}",
+            "$currencySymbol${String.format("%,.2f", spend.amount)}",
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -183,9 +260,9 @@ fun MonthlySpendChart(history: List<MonthlySpend>, currencySymbol: String) {
 
     val formatCompact = { amount: Double ->
         when {
-            amount >= 1000000.0 -> "$currencySymbol${String.format("%.1f", amount / 1000000.0)}M"
-            amount >= 1000.0 -> "$currencySymbol${String.format("%.1f", amount / 1000.0)}k"
-            else -> "$currencySymbol${String.format("%.0f", amount)}"
+            amount >= 1000000.0 -> "${String.format("%.1f", amount / 1000000.0)}M"
+            amount >= 1000.0 -> "${String.format("%.1f", amount / 1000.0)}k"
+            else -> String.format("%.0f", amount)
         }
     }
 
@@ -205,7 +282,7 @@ fun MonthlySpendChart(history: List<MonthlySpend>, currencySymbol: String) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            "Monthly Spending Trend",
+            "Past payments (actual, $currencySymbol)",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
@@ -224,11 +301,11 @@ fun MonthlySpendChart(history: List<MonthlySpend>, currencySymbol: String) {
                         val maxMonth = history.maxByOrNull { it.amount }
                         contentDescription = "Bar chart showing monthly spending trend for the last ${history.size} months. Highest spending was in ${maxMonth?.monthName ?: ""} with $currencySymbol${maxMonth?.amount ?: 0}."
                     },
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
                 history.forEach { spend ->
-                    val proportion = (spend.amount / maxAmount).toFloat().coerceIn(0.01f, 1f)
+                    val proportion = (spend.amount / maxAmount).toFloat().coerceIn(0f, 1f)
                     val animatedProportion = proportion * barProgress.value
                     
                     Column(

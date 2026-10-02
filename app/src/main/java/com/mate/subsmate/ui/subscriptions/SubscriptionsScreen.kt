@@ -3,7 +3,6 @@ package com.mate.subsmate.ui.subscriptions
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +32,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -55,8 +55,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.mate.subsmate.data.local.entities.SubscriptionEntity
@@ -73,15 +75,13 @@ import java.util.Locale
 @Composable
 fun SubscriptionsScreen(
     viewModel: SubscriptionsViewModel,
-    currency: String,
     onNavigateToAdd: () -> Unit,
     onNavigateToEdit: (Long) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currencySymbol = CurrencyUtils.getSymbol(currency)
     var subscriptionToDelete by remember { mutableStateOf<SubscriptionEntity?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
-    val isDark = isSystemInDarkTheme()
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
 
     Scaffold(
         topBar = {
@@ -132,6 +132,19 @@ fun SubscriptionsScreen(
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !uiState.showCompleted,
+                    onClick = { viewModel.setShowCompleted(false) },
+                    label = { Text("Active") }
+                )
+                FilterChip(
+                    selected = uiState.showCompleted,
+                    onClick = { viewModel.setShowCompleted(true) },
+                    label = { Text("Completed (${uiState.completedCount})") }
+                )
+            }
 
             // Sort Row
             Row(
@@ -204,8 +217,8 @@ fun SubscriptionsScreen(
                     CircularProgressIndicator()
                 }
             } else if (uiState.filteredSubscriptions.isEmpty()) {
-                val title = if (uiState.searchQuery.isNotBlank()) "No Matches Found" else "No Subscriptions Yet"
-                val subtitle = if (uiState.searchQuery.isNotBlank()) "Try a different search term." else "Tap + to add your first subscription and start tracking."
+                val title = if (uiState.searchQuery.isNotBlank()) "No Matches Found" else if (uiState.showCompleted) "No Completed Loans" else "No Subscriptions Yet"
+                val subtitle = if (uiState.searchQuery.isNotBlank()) "Try a different search term." else if (uiState.showCompleted) "Completed loans will appear here." else "Tap + to add your first subscription and start tracking."
                 val icon = if (uiState.searchQuery.isNotBlank()) Icons.Default.Search else Icons.Default.Add
                 com.mate.subsmate.ui.components.EmptyStateView(
                     icon = icon,
@@ -221,10 +234,11 @@ fun SubscriptionsScreen(
                     items(uiState.filteredSubscriptions, key = { it.id }) { sub ->
                         SubscriptionManageItem(
                             subscription = sub,
-                            currencySymbol = currencySymbol,
+                            currencySymbol = CurrencyUtils.getSymbol(sub.currency),
                             modifier = Modifier.animateItem(),
                             onEdit = { onNavigateToEdit(sub.id) },
-                            onDelete = { subscriptionToDelete = sub }
+                            onDelete = { subscriptionToDelete = sub },
+                            onUndoFinalPayment = { viewModel.undoFinalPayment(sub) }
                         )
                     }
                 }
@@ -262,11 +276,12 @@ fun SubscriptionManageItem(
     currencySymbol: String,
     modifier: Modifier = Modifier,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onUndoFinalPayment: () -> Unit = {}
 ) {
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val logo = VendorUtils.getLogo(subscription.name)
-    val isDark = isSystemInDarkTheme()
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardBg = if (isDark) GlassNavy.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.85f)
     val borderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f)
     
@@ -387,6 +402,16 @@ fun SubscriptionManageItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
+                subscription.notes?.trim()?.takeIf { it.isNotEmpty() }?.let { notes ->
+                    Text(
+                        text = notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 val priceText = when {
@@ -400,6 +425,9 @@ fun SubscriptionManageItem(
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyLarge
                 )
+                if (!subscription.isActive && subscription.totalInstallments != null && subscription.currentInstallment > 0) {
+                    TextButton(onClick = onUndoFinalPayment) { Text("Undo final payment") }
+                }
                 Row {
                     IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))

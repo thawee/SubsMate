@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+### Added
+- **Subscription Notes**: Add an optional multi-line note when adding or editing a subscription. The Subscriptions list shows a two-line preview, and clearing the note removes it.
+- **Next 12 Months Forecast**: Insights can switch between the monthly equivalent and an estimate of scheduled charges over the next 12 months. The total, donut chart, and category list switch together. Overdue charges are shown separately, and variable-price charges without a saved amount are flagged as excluded.
+- **Recently Paid**: The Dashboard lists recently paid items separately from upcoming charges.
+
+### Changed
+- **Per-Currency Totals**: Dashboard and Insights totals, category breakdowns, and payment history are calculated within the selected currency.
+- **Payment History Chart**: Months with no spending now appear as zero, and the chart is labelled as actual past payments.
+- **Completed Loans**: Completed loans appear under subscription management, and the final payment can be undone.
+
+### Fixed
+- Editing a subscription no longer erases its payment history, and new loan payments get their own IDs.
+- Changing a billing date or cycle now recalculates the schedule, and projected charges no longer share list keys.
+- Snoozed reminders stay delayed and respect the notification setting.
+- Card colors follow the theme, and small nonzero percentages no longer show as 0%.
+
 ## [0.5.0] - UX & Polish Update
 ### Added
 - **Premium Onboarding Flow**: Added a beautiful 3-slide introduction for first-time users.

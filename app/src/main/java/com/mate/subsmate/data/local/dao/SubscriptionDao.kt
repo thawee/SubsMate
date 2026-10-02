@@ -9,6 +9,9 @@ interface SubscriptionDao {
     @Query("SELECT * FROM subscriptions WHERE isActive = 1 ORDER BY nextBillingDate ASC")
     fun getAllActiveSubscriptions(): Flow<List<SubscriptionEntity>>
 
+    @Query("SELECT * FROM subscriptions ORDER BY nextBillingDate ASC")
+    fun getAllSubscriptions(): Flow<List<SubscriptionEntity>>
+
     @Query("SELECT * FROM subscriptions WHERE isActive = 1")
     suspend fun getActiveSubscriptionsOneShot(): List<SubscriptionEntity>
 
@@ -18,8 +21,8 @@ interface SubscriptionDao {
     @Query("SELECT * FROM subscriptions WHERE id = :id")
     suspend fun getSubscriptionByIdOnce(id: Long): SubscriptionEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSubscription(subscription: SubscriptionEntity)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertSubscription(subscription: SubscriptionEntity): Long
 
     @Update
     suspend fun updateSubscription(subscription: SubscriptionEntity)
@@ -30,6 +33,4 @@ interface SubscriptionDao {
     @Query("UPDATE subscriptions SET categoryId = :newId WHERE categoryId = :oldId")
     suspend fun updateCategoryId(oldId: Int, newId: Int)
 
-    @Query("SELECT SUM(CASE WHEN billingCycle = 'MONTHLY' THEN price WHEN billingCycle = 'YEARLY' THEN price / 12.0 WHEN billingCycle = 'CUSTOM' THEN price * 30.0 / MAX(COALESCE(customCycleDays, 30), 1) ELSE 0 END) FROM subscriptions WHERE isActive = 1")
-    fun getEstimatedMonthlyTotal(): Flow<Double?>
 }

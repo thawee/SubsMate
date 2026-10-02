@@ -2,7 +2,6 @@ package com.mate.subsmate.ui.dashboard
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -28,6 +27,7 @@ import androidx.compose.material.icons.filled.Add
 
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -43,17 +43,18 @@ import com.mate.subsmate.ui.utils.VendorUtils
 import com.mate.subsmate.ui.utils.IconUtils
 import com.mate.subsmate.ui.utils.LoanUtils
 import com.mate.subsmate.ui.utils.CurrencyUtils
+import com.mate.subsmate.ui.utils.PercentageUtils
+import com.mate.subsmate.ui.components.CurrencyFilter
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
-    viewModel: DashboardViewModel,
-    currency: String
+    viewModel: DashboardViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currencySymbol = CurrencyUtils.getSymbol(currency)
+    val currencySymbol = CurrencyUtils.getSymbol(uiState.selectedCurrency)
     val today = remember { SimpleDateFormat("EEEE, dd MMM yyyy", Locale.getDefault()).format(Date()) }
 
     Scaffold(
@@ -94,6 +95,18 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             item { Spacer(modifier = Modifier.height(0.dp)) }
+
+            item {
+                Column {
+                    Text("Spending currency", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onBackground)
+                    CurrencyFilter(
+                        currencies = uiState.availableCurrencies,
+                        selected = uiState.selectedCurrency,
+                        onSelect = viewModel::setCurrency,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
 
             item {
                 QuickStatsRow(
@@ -157,11 +170,25 @@ fun DashboardScreen(
                     )
                 }
             } else {
-                items(uiState.upcomingCharges, key = { it.sub.id }) { model ->
+                items(uiState.upcomingCharges, key = { "${it.sub.id}:${it.projectedDate ?: it.sub.nextBillingDate}" }) { model ->
                     SubscriptionItem(
                         model = model, 
-                        currencySymbol = currencySymbol,
+                        currencySymbol = CurrencyUtils.getSymbol(model.sub.currency),
                         onMarkAsPaid = { viewModel.markAsPaid(model.sub) },
+                        onUndoPayment = { viewModel.undoPayment(model.sub) },
+                        modifier = Modifier.animateItem()
+                    )
+                }
+            }
+
+            if (uiState.recentlyPaid.isNotEmpty()) {
+                item {
+                    Text("Recently Paid", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                }
+                items(uiState.recentlyPaid, key = { "paid:${it.sub.id}:${it.lastPaymentDate}" }) { model ->
+                    SubscriptionItem(
+                        model = model,
+                        currencySymbol = CurrencyUtils.getSymbol(model.sub.currency),
                         onUndoPayment = { viewModel.undoPayment(model.sub) },
                         modifier = Modifier.animateItem()
                     )
@@ -192,11 +219,11 @@ fun CategoryBreakdownSummary(breakdown: List<CategorySpend>) {
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
             ) {
-                breakdown.forEach { spend ->
+                breakdown.filter { it.percentage > 0f }.forEach { spend ->
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .weight(spend.percentage.coerceAtLeast(0.01f))
+                            .weight(spend.percentage)
                             .background(Color(android.graphics.Color.parseColor(spend.colorHex)))
                     )
                 }
@@ -219,7 +246,7 @@ fun CategoryBreakdownSummary(breakdown: List<CategorySpend>) {
                             modifier = Modifier.weight(1f)
                         )
                         Text(
-                            "${(spend.percentage * 100).toInt()}%", 
+                            PercentageUtils.label(spend.percentage),
                             style = MaterialTheme.typography.labelSmall, 
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -238,7 +265,7 @@ fun QuickStatsRow(
     averageCost: Double,
     currencySymbol: String
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardBg = if (isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.03f)
     val borderColor = if (isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
 
@@ -324,9 +351,9 @@ fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
 
     val formatCompact = { amount: Double ->
         when {
-            amount >= 1000000.0 -> "$currencySymbol${String.format("%.1f", amount / 1000000.0)}M"
-            amount >= 1000.0 -> "$currencySymbol${String.format("%.1f", amount / 1000.0)}k"
-            else -> "$currencySymbol${String.format("%.0f", amount)}"
+            amount >= 1000000.0 -> "${String.format("%.1f", amount / 1000000.0)}M"
+            amount >= 1000.0 -> "${String.format("%.1f", amount / 1000.0)}k"
+            else -> String.format("%.0f", amount)
         }
     }
 
@@ -342,7 +369,7 @@ fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
     GlassyCard(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                "Spending Trend",
+                "Spending Trend ($currencySymbol)",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -365,7 +392,7 @@ fun SpendingTrendChart(history: List<MonthlySpend>, currencySymbol: String) {
                     verticalAlignment = Alignment.Bottom
                 ) {
                     history.forEach { spend ->
-                        val proportion = (spend.amount / maxAmount).toFloat().coerceIn(0.05f, 1f)
+                        val proportion = (spend.amount / maxAmount).toFloat().coerceIn(0f, 1f)
                         val animatedProportion = proportion * barProgress.value
 
                         Column(
@@ -418,7 +445,7 @@ fun SubscriptionItem(
     val daysRemaining = VendorUtils.getDaysRemaining(chargeDate)
     val logo = VendorUtils.getLogo(sub.name)
     val isDue = chargeDate <= System.currentTimeMillis()
-    val isDark = isSystemInDarkTheme()
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val dateFormatter = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
     val isLoan = sub.totalInstallments != null
 
@@ -488,7 +515,9 @@ fun SubscriptionItem(
                         daysRemaining <= 3 -> WarningOrange
                         else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     }
-                    val statusText = if (model.projectedDate != null) {
+                    val statusText = if (model.isRecentlyPaid && model.lastPaymentDate != null) {
+                        "Paid ${dateFormatter.format(Date(model.lastPaymentDate))}"
+                    } else if (model.projectedDate != null) {
                         dateFormatter.format(Date(chargeDate))
                     } else if (daysRemaining == 0L) {
                         "Due Today"

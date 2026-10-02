@@ -72,6 +72,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -97,7 +98,7 @@ fun AddSubscriptionScreen(
     onNavigateToReceiptScan: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val currencySymbol = CurrencyUtils.getSymbol(currency)
+    val currencySymbol = CurrencyUtils.getSymbol(if (uiState.id != 0L && uiState.currency.isNotBlank()) uiState.currency else currency)
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val isDark = isSystemInDarkTheme()
 
@@ -445,6 +446,23 @@ fun AddSubscriptionScreen(
                             )
                         }
                     }
+                }
+            }
+
+            // ─── 📝 Notes ───
+            GlassyCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("📝 Notes (optional)", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    OutlinedTextField(
+                        value = uiState.notes,
+                        onValueChange = viewModel::onNotesChange,
+                        placeholder = { Text("Add a reminder or detail about this subscription") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 3,
+                        maxLines = 5,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                        colors = textFieldColors
+                    )
                 }
             }
 

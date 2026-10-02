@@ -14,8 +14,8 @@ class SubscriptionRepositoryImpl(
     override fun getAllActiveSubscriptions(): Flow<List<SubscriptionEntity>> =
         subscriptionDao.getAllActiveSubscriptions()
 
-    override fun getEstimatedMonthlyTotal(): Flow<Double?> =
-        subscriptionDao.getEstimatedMonthlyTotal()
+    override fun getAllSubscriptions(): Flow<List<SubscriptionEntity>> =
+        subscriptionDao.getAllSubscriptions()
 
     override fun getSubscriptionById(id: Long): Flow<SubscriptionEntity?> =
         subscriptionDao.getSubscriptionById(id)

@@ -21,7 +21,9 @@ import java.util.*
 data class AddSubscriptionUiState(
     val id: Long = 0,
     val name: String = "",
+    val notes: String = "",
     val price: String = "",
+    val currency: String = "",
     val categoryId: Int = 1,
     val billingCycle: BillingCycle = BillingCycle.MONTHLY,
     val paymentType: PaymentType = PaymentType.AUTO_PAY,
@@ -74,7 +76,9 @@ class AddSubscriptionViewModel(
                     it.copy(
                         id = sub.id,
                         name = sub.name,
+                        notes = sub.notes.orEmpty(),
                         price = if (sub.isVariablePrice && sub.price == 0.0) "" else sub.price.toString(),
+                        currency = sub.currency,
                         categoryId = sub.categoryId,
                         billingCycle = sub.billingCycle,
                         paymentType = sub.paymentType,
@@ -108,6 +112,10 @@ class AddSubscriptionViewModel(
 
     fun onNameChange(newName: String) {
         _uiState.update { it.copy(name = newName, selectedTemplate = null, errorMessage = null) }
+    }
+
+    fun onNotesChange(newNotes: String) {
+        _uiState.update { it.copy(notes = newNotes) }
     }
 
     fun onPriceChange(newPrice: String) {
@@ -255,6 +263,7 @@ class AddSubscriptionViewModel(
 
     fun saveSubscription(currency: String) {
         val state = _uiState.value
+        val savedCurrency = if (state.id != 0L && state.currency.isNotBlank()) state.currency else currency
         val isPriceValid = state.isVariablePrice || state.price.toDoubleOrNull() != null
         val totalInstallmentsVal = if (state.isLoan) state.totalInstallments.toIntOrNull() else null
         val currentInstallmentVal = if (state.isLoan) state.currentInstallment.toIntOrNull() ?: 0 else 0
@@ -308,7 +317,13 @@ class AddSubscriptionViewModel(
         viewModelScope.launch {
             val existingSub = if (state.id != 0L) repository.getSubscriptionById(state.id).firstOrNull() else null
             
-                val nextBilling = if (existingSub != null) {
+                val nextBilling = if (existingSub != null &&
+                    existingSub.firstBillingDate == state.firstBillingDate &&
+                    existingSub.billingCycle == state.billingCycle &&
+                    existingSub.customCycleDays == customCycleDaysVal &&
+                    existingSub.isTrial == state.isTrial &&
+                    existingSub.trialEndDate == state.trialEndDate
+                ) {
                     existingSub.nextBillingDate
                 } else if (state.isTrial && state.trialEndDate != null) {
                     state.trialEndDate
@@ -345,8 +360,9 @@ class AddSubscriptionViewModel(
             val entity = SubscriptionEntity(
                 id = state.id,
                 name = state.name,
+                notes = state.notes.trim().ifBlank { null },
                 price = finalPrice,
-                currency = currency,
+                currency = savedCurrency,
                 categoryId = state.categoryId,
                 billingCycle = state.billingCycle,
                 paymentType = state.paymentType,
@@ -374,7 +390,12 @@ class AddSubscriptionViewModel(
                 minimumPaymentDue = minimumPaymentDueVal,
                 cardApr = cardAprVal
             )
-            repository.insertSubscription(entity)
+            val savedId = if (existingSub == null) {
+                repository.insertSubscription(entity)
+            } else {
+                repository.updateSubscription(entity)
+                entity.id
+            }
 
             // Sync payment history for loans
             if (state.isLoan && finalPrice > 0.0) {
@@ -389,10 +410,10 @@ class AddSubscriptionViewModel(
                             val periodEnd = BillingUtils.advanceByOneCycle(periodStart, state.billingCycle, cycleDays)
                             repository.recordPayment(
                                 com.mate.subsmate.data.local.entities.PaymentHistoryEntity(
-                                    subscriptionId = entity.id,
+                                    subscriptionId = savedId,
                                     subscriptionName = state.name,
                                     amount = finalPrice,
-                                    currency = currency,
+                                    currency = savedCurrency,
                                     paymentDate = periodEnd,
                                     billingPeriodStart = periodStart,
                                     billingPeriodEnd = periodEnd
@@ -415,7 +436,7 @@ class AddSubscriptionViewModel(
                                     subscriptionId = entity.id,
                                     subscriptionName = state.name,
                                     amount = finalPrice,
-                                    currency = currency,
+                                    currency = savedCurrency,
                                     paymentDate = periodEnd,
                                     billingPeriodStart = periodStart,
                                     billingPeriodEnd = periodEnd

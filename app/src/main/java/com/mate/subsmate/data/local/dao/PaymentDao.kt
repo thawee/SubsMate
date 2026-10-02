@@ -24,6 +24,6 @@ interface PaymentDao {
     @Query("DELETE FROM payment_history WHERE subscriptionId = :subId")
     suspend fun deleteAllPaymentsForSubscription(subId: Long)
 
-    @Query("SELECT * FROM payment_history WHERE subscriptionId = :subId ORDER BY billingPeriodEnd DESC LIMIT 1")
+    @Query("SELECT * FROM payment_history WHERE subscriptionId = :subId ORDER BY paymentDate DESC LIMIT 1")
     suspend fun getLastPaymentForSubscription(subId: Long): PaymentHistoryEntity?
 }

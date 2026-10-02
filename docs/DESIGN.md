@@ -19,12 +19,14 @@ The app is fully offline and stores data securely on the device.
    - Stores the recurring item (e.g., Netflix, Loan Repayment).
    - Tracks `nextBillingDate`, `billingCycle` (e.g., Monthly, Yearly), `amount`, and styling (`colorHex`, `iconResId`).
    - For loans, it tracks `totalInstallments` and `currentInstallment`.
+   - Stores an optional user note in `notes`; blank input is saved as `null`.
 2. **PaymentEntity (`payments`)**
    - Records every time a payment is marked as "Paid".
    - Used to generate historical spending charts and trend data.
 
 ## 4. Core Logic
 - **Date Calculation**: The app uses `VendorUtils.advanceByOneCycle(date, cycle)` to accurately compute the next billing date based on calendar rules (e.g., preserving the 31st of the month when advancing through February).
+- **Forecast**: `ForecastUtils` projects scheduled charges for active subscriptions in the selected currency from today up to (but not including) the same date next year, grouped by category. Overdue charges and variable-price charges without a saved amount are reported separately instead of being folded into the total.
 - **Notification Engine**: `RenewalNotificationWorker` checks the database for subscriptions due in the next 3 days and fires Android system notifications. It hooks directly into user SharedPreferences to ensure users can toggle alerts globally.
 
 ## 5. Security & Privacy

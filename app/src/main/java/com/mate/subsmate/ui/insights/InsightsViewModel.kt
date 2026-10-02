@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mate.subsmate.domain.repository.SubscriptionRepository
 import com.mate.subsmate.ui.utils.CategoryUtils
+import com.mate.subsmate.ui.utils.ForecastUtils
+import com.mate.subsmate.ui.utils.SpendingForecast
+import com.mate.subsmate.ui.utils.SpendingUtils
 import kotlinx.coroutines.flow.*
 
 data class CategorySpend(
@@ -18,9 +21,16 @@ data class MonthlySpend(
     val amount: Double
 )
 
+enum class InsightsPeriod { MONTHLY, NEXT_TWELVE_MONTHS }
+
 data class InsightsUiState(
+    val selectedCurrency: String = "THB",
+    val availableCurrencies: List<String> = emptyList(),
     val categoryBreakdown: List<CategorySpend> = emptyList(),
     val totalMonthlySpend: Double = 0.0,
+    val forecast: SpendingForecast = SpendingForecast(),
+    val forecastBreakdown: List<CategorySpend> = emptyList(),
+    val selectedPeriod: InsightsPeriod = InsightsPeriod.MONTHLY,
     val monthlyHistory: List<MonthlySpend> = emptyList(),
     val isLoading: Boolean = true
 )
@@ -28,19 +38,30 @@ data class InsightsUiState(
 class InsightsViewModel(
     private val repository: SubscriptionRepository
 ) : ViewModel() {
+    private val selectedCurrency = MutableStateFlow("THB")
+    private val selectedPeriod = MutableStateFlow(InsightsPeriod.MONTHLY)
 
     val uiState: StateFlow<InsightsUiState> = combine(
         repository.getAllActiveSubscriptions(),
-        repository.getEstimatedMonthlyTotal(),
-        repository.getAllPayments()
-    ) { subs, total, payments ->
-        val monthlyTotal = total ?: 0.0
-        val breakdown = CategoryUtils.calculateCategoryBreakdown(subs, monthlyTotal)
-        val history = calculateMonthlyHistory(payments)
+        repository.getAllPayments(),
+        selectedCurrency,
+        selectedPeriod
+    ) { subs, payments, currency, period ->
+        val currencySubs = subs.filter { it.currency.equals(currency, ignoreCase = true) }
+        val currencyPayments = payments.filter { it.currency.equals(currency, ignoreCase = true) }
+        val monthlyTotal = SpendingUtils.monthlyTotal(currencySubs, currency)
+        val breakdown = CategoryUtils.calculateCategoryBreakdown(currencySubs, monthlyTotal)
+        val history = if (currencyPayments.isEmpty()) emptyList() else SpendingUtils.monthlyHistory(currencyPayments, currency)
+        val forecast = ForecastUtils.nextTwelveMonths(currencySubs, currency)
         
         InsightsUiState(
+            selectedCurrency = currency,
+            availableCurrencies = (subs.map { it.currency } + payments.map { it.currency } + currency).distinct().sorted(),
             categoryBreakdown = breakdown,
             totalMonthlySpend = monthlyTotal,
+            forecast = forecast,
+            forecastBreakdown = CategoryUtils.fromCategoryAmounts(forecast.amountsByCategory),
+            selectedPeriod = period,
             monthlyHistory = history,
             isLoading = false
         )
@@ -50,29 +71,11 @@ class InsightsViewModel(
         initialValue = InsightsUiState()
     )
 
-    private fun calculateMonthlyHistory(payments: List<com.mate.subsmate.data.local.entities.PaymentHistoryEntity>): List<MonthlySpend> {
-        if (payments.isEmpty()) return emptyList()
+    fun setCurrency(currency: String) {
+        selectedCurrency.value = currency
+    }
 
-        val calendar = java.util.Calendar.getInstance()
-        val format = java.text.SimpleDateFormat("MMM", java.util.Locale.getDefault())
-
-        val grouped = payments.groupBy { payment ->
-            calendar.timeInMillis = payment.paymentDate
-            val year = calendar.get(java.util.Calendar.YEAR)
-            val month = calendar.get(java.util.Calendar.MONTH)
-            year * 12 + month
-        }
-
-        val sortedKeys = grouped.keys.sorted().takeLast(6)
-
-        return sortedKeys.map { key ->
-            val monthVal = key % 12
-            val yearVal = key / 12
-            calendar.set(yearVal, monthVal, 1)
-            val monthName = format.format(calendar.time)
-            
-            val totalAmount = grouped[key]?.sumOf { it.amount } ?: 0.0
-            MonthlySpend(monthName = monthName, amount = totalAmount)
-        }
+    fun setPeriod(period: InsightsPeriod) {
+        selectedPeriod.value = period
     }
 }

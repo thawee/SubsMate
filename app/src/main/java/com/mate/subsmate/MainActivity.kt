@@ -199,23 +199,26 @@ fun MainApp(
                 LaunchedEffect(settingsState.paidVisibilityDays) {
                     viewModel.setPaidVisibilityDays(settingsState.paidVisibilityDays)
                 }
+                LaunchedEffect(settingsState.selectedCurrency) {
+                    viewModel.setCurrency(settingsState.selectedCurrency)
+                }
                 DashboardScreen(
-                    viewModel = viewModel,
-                    currency = settingsState.selectedCurrency
+                    viewModel = viewModel
                 )
             }
             composable(Screen.Insights.route) {
                 val viewModel = remember { InsightsViewModel(repository) }
+                LaunchedEffect(settingsState.selectedCurrency) {
+                    viewModel.setCurrency(settingsState.selectedCurrency)
+                }
                 InsightsScreen(
-                    viewModel = viewModel,
-                    currency = settingsState.selectedCurrency
+                    viewModel = viewModel
                 )
             }
             composable(Screen.Subscriptions.route) {
                 val viewModel = remember { SubscriptionsViewModel(repository) }
                 SubscriptionsScreen(
                     viewModel = viewModel,
-                    currency = settingsState.selectedCurrency,
                     onNavigateToAdd = { navController.navigate("add_subscription") },
                     onNavigateToEdit = { id -> navController.navigate("edit_subscription/$id") }
                 )
