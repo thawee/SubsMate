@@ -12,8 +12,9 @@ SubsMate follows the "Mate Series" design language, prioritizing a premium, dark
 
 ## 2. Iconography
 The launcher icon reflects the premium nature of the app:
-- **Metaphor**: A sleek, front-pocket wallet containing an abstract "Infinity-Link" geometry.
+- **Metaphor**: A sleek, front-pocket wallet holding a gold card engraved with an "Infinity-Link" (∞) mark.
 - **Symbolism**: The Infinity-Link represents the endless, cyclic nature of recurring subscriptions.
+- **Sizing**: The artwork is scaled to 75% inside a `<group>` so it sits within the 66dp adaptive-icon safe zone with room to spare; nothing floats above the card where launcher masks would clip it. The ambient glow is a radial fade, so no hard edge shows inside circle or rounded-square masks.
 - **Monogram**: The classic Mate Series 'M', perfectly centered in the wallet pocket.
 
 ## 3. UI Components & Patterns

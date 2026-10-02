@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.1] - Launcher Icon Refinement
+### Changed
+- **Launcher Icon**: Scaled the artwork down so circle and rounded-square launcher masks no longer clip it, replaced the oversized two-ring symbol above the card with a small Infinity-Link (∞) mark on the card, and softened the background glow so no hard ring shows.
+
 ## [0.6.0] - Insights & Notes Update
 ### Added
 - **Subscription Notes**: Add an optional multi-line note when adding or editing a subscription. The Subscriptions list shows a two-line preview, and clearing the note removes it.
